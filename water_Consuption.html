@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Usage Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for better readability */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9; /* light slate */
+        }
+        .container-card {
+            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .result-table th, .result-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0; /* slate-200 */
+        }
+        .result-table th {
+            background-color: #e2e8f0; /* slate-200 */
+            font-weight: 600;
+        }
+        /* Specific style for the visual bar column */
+        .visual-bar-cell {
+            min-width: 200px; /* Ensure minimum width for the bar */
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-xl container-card p-6 sm:p-10">
+        
+        <!-- Language Selector -->
+        <div class="flex justify-end mb-6">
+            <select id="language-selector" onchange="setLanguage(this.value)"
+                    class="p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-blue-500 focus:border-blue-500">
+                <option value="en">English</option>
+                <option value="ja">日本語 (Japanese)</option>
+                <option value="id">Bahasa Indonesia (Indonesian)</option>
+            </select>
+        </div>
+
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 id="app-title" class="text-3xl sm:text-4xl font-extrabold text-blue-800">Water Usage Analysis</h1>
+            <p id="subtitle" class="text-gray-600 mt-2 text-lg">Estimate of water requirement per resident</p>
+        </header>
+
+        <!-- Input Section -->
+        <div class="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+            <label for="residents" id="input-label" class="block text-xl font-medium text-blue-700 mb-3">
+                Total Number of Residents
+            </label>
+            <input type="number" id="residents" placeholder="e.g., 100" min="0" value="0"
+                   class="w-full p-3 border-2 border-blue-400 rounded-lg text-lg focus:border-blue-600 focus:ring-blue-600 transition duration-150"
+                   oninput="calculateUsage()">
+        </div>
+
+        <!-- Constants Display (Information Section) -->
+        <div class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div class="bg-indigo-100 p-4 rounded-lg">
+                <p id="const-per-cont-label" class="font-semibold text-indigo-700">Per Container Capacity</p>
+                <p class="text-2xl font-bold text-indigo-900">600 <span id="unit-gallons-1">gallons</span></p>
+            </div>
+            <div class="bg-indigo-100 p-4 rounded-lg">
+                <p id="const-gal-to-lit-label" class="font-semibold text-indigo-700">Gallon to Litre Conversion</p>
+                <p class="text-2xl font-bold text-indigo-900">19 <span id="unit-litres-per-gallon">litres / gallon</span></p>
+            </div>
+            <div class="bg-indigo-100 p-4 rounded-lg">
+                <p id="const-daily-usage-label" class="font-semibold text-indigo-700">Daily Usage Per Person</p>
+                <p class="text-2xl font-bold text-indigo-900">4 <span id="unit-litres-1">litres</span></p>
+            </div>
+        </div>
+
+        <!-- Result Section (Chart) -->
+        <div id="results-container" class="mt-10 hidden">
+            <h2 id="result-header" class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Usage & Requirement Analysis</h2>
+            
+            <!-- Main Usage Table -->
+            <div class="overflow-x-auto shadow-lg rounded-lg mb-8">
+                <table class="min-w-full result-table bg-white">
+                    <thead class="text-xs uppercase tracking-wider text-gray-700">
+                        <tr>
+                            <th id="th-period" class="rounded-tl-lg">Period</th>
+                            <th id="th-litres">Litres</th>
+                            <th id="th-gallons">Gallons</th>
+                            <th id="th-tons">Tons (MT)</th>
+                            <th id="th-containers" class="rounded-tr-lg">Containers Needed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usage-data" class="text-gray-600">
+                        <!-- Data will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- SOS/Emergency Storage Section -->
+            <div class="p-6 bg-red-50 rounded-lg border-2 border-red-300">
+                <h3 id="sos-header" class="text-xl font-bold text-red-700 mb-3 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.398 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    SOS (15 Days) Emergency Storage Requirement
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="sos-data">
+                    <!-- SOS Data will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Error/Initial Message -->
+        <div id="initial-message" class="text-center text-gray-500 mt-10 p-4 bg-gray-100 rounded-lg">
+            <span id="initial-message-text">Enter the number of residents and view the analysis.</span>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Constants ---
+        const CONT_GALLONS = 600;
+        const LITRES_PER_GALLON = 19;
+        const DAILY_PER_RESIDENT_LITRES = 4;
+        const DAYS_IN_WEEK = 7;
+        const DAYS_IN_MONTH = 30; // Simplified monthly calculation
+        const SOS_DAYS = 15;
+        let currentLang = 'en';
+
+        // --- Translations Data ---
+        const translations = {
+            'en': {
+                'app_title': 'Water Usage Analysis',
+                'subtitle': 'Estimate of water requirement per resident',
+                'input_label': 'Total Number of Residents',
+                'input_placeholder': 'e.g., 100',
+                'const_per_cont': 'Per Container Capacity',
+                'const_gal_to_lit': 'Gallon to Litre Conversion',
+                'const_daily_usage': 'Daily Usage Per Person',
+                'result_header': 'Usage & Requirement Analysis',
+                'th_period': 'Period',
+                'th_litres': 'Litres (Visual)',
+                'th_gallons': 'Gallons',
+                'th_tons': 'Tons (MT)',
+                'th_containers': 'Containers Needed',
+                'daily_row': 'Daily',
+                'weekly_row': 'Weekly',
+                'monthly_row': 'Monthly (30 Days)',
+                'sos_header': 'SOS (15 Days) Emergency Storage Requirement',
+                'sos_litres': 'Litres',
+                'sos_gallons': 'Gallons',
+                'sos_tons': 'Tons (MT)',
+                'sos_containers': 'Containers',
+                'sos_suffix': '(Rounded Up)',
+                'unit_gallons': 'gallons',
+                'unit_litres_per_gallon': 'litres / gallon',
+                'unit_litres': 'litres',
+                'unit_tons': 'Metric Tons (MT)',
+                'initial_msg': 'Enter the number of residents and view the analysis.'
+            },
+            'ja': {
+                'app_title': '水使用量分析',
+                'subtitle': '住民一人当たりの水必要量の推定',
+                'input_label': '総居住者数',
+                'input_placeholder': '例: 100',
+                'const_per_cont': 'コンテナあたりの容量',
+                'const_gal_to_lit': 'ガロンからリットルへの換算',
+                'const_daily_usage': '一人当たりの日々の使用量',
+                'result_header': '使用量と必要量の分析',
+                'th_period': '期間',
+                'th_litres': 'リットル (視覚化)',
+                'th_gallons': 'ガロン',
+                'th_tons': 'トン (MT)',
+                'th_containers': '必要なコンテナ数',
+                'daily_row': '日次',
+                'weekly_row': '週次',
+                'monthly_row': '月次 (30日間)',
+                'sos_header': 'SOS (15日間) 緊急貯蔵要件',
+                'sos_litres': 'リットル',
+                'sos_gallons': 'ガロン',
+                'sos_tons': 'トン (MT)',
+                'sos_containers': 'コンテナ',
+                'sos_suffix': '(切り上げ)',
+                'unit_gallons': 'ガロン',
+                'unit_litres_per_gallon': 'リットル / ガロン',
+                'unit_litres': 'リットル',
+                'unit_tons': 'メートルトン (MT)',
+                'initial_msg': '居住者数を入力し、分析をご覧ください。'
+            },
+            'id': {
+                'app_title': 'Analisis Penggunaan Air',
+                'subtitle': 'Estimasi kebutuhan air per penduduk',
+                'input_label': 'Jumlah Total Penduduk',
+                'input_placeholder': 'Contoh: 100',
+                'const_per_cont': 'Kapasitas Per Kontainer',
+                'const_gal_to_lit': 'Konversi Galon ke Liter',
+                'const_daily_usage': 'Penggunaan Harian Per Orang',
+                'result_header': 'Analisis Penggunaan & Kebutuhan',
+                'th_period': 'Periode',
+                'th_litres': 'Liter (Visual)',
+                'th_gallons': 'Galon',
+                'th_tons': 'Ton (MT)',
+                'th_containers': 'Kontainer yang Dibutuhkan',
+                'daily_row': 'Harian',
+                'weekly_row': 'Mingguan',
+                'monthly_row': 'Bulanan (30 Hari)',
+                'sos_header': 'Kebutuhan Penyimpanan Darurat SOS (15 Hari)',
+                'sos_litres': 'Liter',
+                'sos_gallons': 'Galon',
+                'sos_tons': 'Ton (MT)',
+                'sos_containers': 'Kontainer',
+                'sos_suffix': '(Dibulatkan Ke Atas)',
+                'unit_gallons': 'galon',
+                'unit_litres_per_gallon': 'liter / galon',
+                'unit_litres': 'liter',
+                'unit_tons': 'Ton Metrik (MT)',
+                'initial_msg': 'Masukkan jumlah penduduk dan lihat analisisnya.'
+            }
+        };
+
+        const elements = {
+            'app-title': document.getElementById('app-title'),
+            'subtitle': document.getElementById('subtitle'),
+            'input-label': document.getElementById('input-label'),
+            'residents': document.getElementById('residents'), // for placeholder
+            'const-per-cont-label': document.getElementById('const-per-cont-label'),
+            'const-gal-to-lit-label': document.getElementById('const-gal-to-lit-label'),
+            'const-daily-usage-label': document.getElementById('const-daily-usage-label'),
+            'result-header': document.getElementById('result-header'),
+            'th-period': document.getElementById('th-period'),
+            'th-litres': document.getElementById('th-litres'),
+            'th-gallons': document.getElementById('th-gallons'),
+            'th-tons': document.getElementById('th-tons'),
+            'th-containers': document.getElementById('th-containers'),
+            'sos-header': document.getElementById('sos-header'),
+            'unit-gallons-1': document.getElementById('unit-gallons-1'),
+            'unit-litres-per-gallon': document.getElementById('unit-litres-per-gallon'),
+            'unit-litres-1': document.getElementById('unit-litres-1'),
+            'initial-message-text': document.getElementById('initial-message-text')
+        };
+
+
+        // --- Helper Functions ---
+        const resultsContainer = document.getElementById('results-container');
+        const initialMessage = document.getElementById('initial-message');
+        const usageDataBody = document.getElementById('usage-data');
+        const sosDataContainer = document.getElementById('sos-data');
+        const residentsInput = document.getElementById('residents');
+
+        /**
+         * Converts litres to gallons.
+         * @param {number} litres
+         * @returns {number} Gallons
+         */
+        function toGallons(litres) {
+            return litres / LITRES_PER_GALLON;
+        }
+
+        /**
+         * Converts litres to metric tons (1 MT = 1000 Litres for water).
+         * @param {number} litres
+         * @returns {number} Metric Tons
+         */
+        function toTons(litres) {
+            return litres / 1000;
+        }
+
+        /**
+         * Calculates the number of containers required, rounded up.
+         * @param {number} gallons
+         * @returns {number} Number of containers (integer)
+         */
+        function toContainers(gallons) {
+            return Math.ceil(gallons / CONT_GALLONS);
+        }
+
+        /**
+         * Formats a number for display with two decimal places.
+         * @param {number} num
+         * @returns {string} Formatted number
+         */
+        function formatNumber(num) {
+            // Using currentLang locale for number formatting
+            return num.toLocaleString(currentLang, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        
+        /**
+         * Renders a single row of usage data, using current language translations.
+         * @param {string} key - Translation key for the period label (e.g., 'daily_row')
+         * @param {number} litres
+         * @param {number} containers
+         * @param {number} gallons
+         * @param {number} tons
+         * @param {number} maxLitres - The maximum value (monthly litres) for scaling the bar
+         * @returns {string} HTML table row
+         */
+        function renderRow(key, litres, containers, gallons, tons, maxLitres) {
+            const T = translations[currentLang];
+            // Calculate width percentage relative to the monthly usage (for visual impact)
+            const barWidth = maxLitres > 0 ? (litres / maxLitres) * 100 : 0; 
+            
+            return `
+                <tr class="hover:bg-blue-50">
+                    <td class="font-bold text-gray-800">${T[key]}</td>
+                    <td class="visual-bar-cell">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-1/3 min-w-[70px] font-semibold">${formatNumber(litres)}</span>
+                            <div class="flex-grow h-6 bg-blue-200 rounded-full overflow-hidden">
+                                <!-- Dynamic Bar -->
+                                <div class="h-full bg-blue-600 rounded-full transition-all duration-700 ease-out shadow-md" 
+                                     style="width: ${barWidth.toFixed(2)}%;">
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${formatNumber(gallons)}</td>
+                    <td>${formatNumber(tons)}</td>
+                    <td class="text-blue-700 font-extrabold">${containers.toLocaleString()}</td>
+                </tr>
+            `;
+        }
+        
+        /**
+         * Renders the SOS data section, using current language translations.
+         * @param {number} litres
+         * @param {number} containers
+         * @param {number} gallons
+         * @param {number} tons
+         * @returns {string} HTML for SOS cards
+         */
+        function renderSOSCards(litres, containers, gallons, tons) {
+            const T = translations[currentLang];
+            return `
+                <div class="bg-red-100 p-3 rounded-lg text-center shadow-sm">
+                    <p class="font-semibold text-red-800">${T.sos_litres}</p>
+                    <p class="text-xl font-bold text-red-900">${formatNumber(litres)}</p>
+                </div>
+                <div class="bg-red-100 p-3 rounded-lg text-center shadow-sm">
+                    <p class="font-semibold text-red-800">${T.sos_gallons}</p>
+                    <p class="text-xl font-bold text-red-900">${formatNumber(gallons)}</p>
+                </div>
+                <div class="bg-red-100 p-3 rounded-lg text-center shadow-sm">
+                    <p class="font-semibold text-red-800">${T.sos_tons}</p>
+                    <p class="text-xl font-bold text-red-900">${formatNumber(tons)}</p>
+                </div>
+                <div class="bg-red-200 p-3 rounded-lg text-center shadow-lg transform scale-105">
+                    <p class="font-semibold text-red-900">${T.sos_containers}</p>
+                    <p class="text-2xl font-extrabold text-red-900">${containers.toLocaleString()} ${T.sos_suffix}</p>
+                </div>
+            `;
+        }
+        
+        /**
+         * Updates all static text elements based on the selected language.
+         * @param {string} langCode - The new language code ('en', 'ja', 'id').
+         */
+        function setLanguage(langCode) {
+            currentLang = langCode;
+            const T = translations[langCode];
+
+            // Update static elements
+            elements['app-title'].textContent = T.app_title;
+            elements['subtitle'].textContent = T.subtitle;
+            elements['input-label'].textContent = T.input_label;
+            elements['residents'].placeholder = T.input_placeholder;
+            elements['const-per-cont-label'].textContent = T.const_per_cont;
+            elements['const-gal-to-lit-label'].textContent = T.const_gal_to_lit;
+            elements['const-daily-usage-label'].textContent = T.const_daily_usage;
+            elements['result-header'].textContent = T.result_header;
+            elements['th-period'].textContent = T.th_period;
+            elements['th-litres'].textContent = T.th_litres;
+            elements['th-gallons'].textContent = T.th_gallons;
+            elements['th-tons'].textContent = T.th_tons;
+            elements['th-containers'].textContent = T.th_containers;
+            elements['sos-header'].childNodes[2].textContent = T.sos_header; // Targeting text node after SVG
+            elements['initial-message-text'].textContent = T.initial_msg;
+
+            // Update units
+            elements['unit-gallons-1'].textContent = T.unit_gallons;
+            elements['unit-litres-per-gallon'].textContent = T.unit_litres_per_gallon;
+            elements['unit-litres-1'].textContent = T.unit_litres;
+
+            // Re-run calculation to update table rows (which use language variables)
+            calculateUsage();
+        }
+
+        /**
+         * Main calculation and rendering function.
+         */
+        function calculateUsage() {
+            const residents = parseInt(residentsInput.value, 10);
+
+            if (isNaN(residents) || residents <= 0) {
+                // Hide results and show initial message if input is invalid
+                resultsContainer.classList.add('hidden');
+                initialMessage.classList.remove('hidden');
+                residentsInput.value = residents < 0 ? 0 : residents; // Reset to 0 if negative
+                return;
+            }
+
+            // Show results and hide initial message
+            resultsContainer.classList.remove('hidden');
+            initialMessage.classList.add('hidden');
+
+
+            // 1. Daily Calculations
+            const dailyLitres = residents * DAILY_PER_RESIDENT_LITRES;
+            const dailyGallons = toGallons(dailyLitres);
+            const dailyTons = toTons(dailyLitres);
+            const dailyContainers = toContainers(dailyGallons);
+
+            // 2. Weekly Calculations
+            const weeklyLitres = dailyLitres * DAYS_IN_WEEK;
+            const weeklyGallons = dailyGallons * DAYS_IN_WEEK;
+            const weeklyTons = toTons(weeklyLitres);
+            const weeklyContainers = toContainers(weeklyGallons);
+
+            // 3. Monthly Calculations (30 days)
+            const monthlyLitres = dailyLitres * DAYS_IN_MONTH;
+            const monthlyGallons = dailyGallons * DAYS_IN_MONTH;
+            const monthlyTons = toTons(monthlyLitres);
+            const monthlyContainers = toContainers(monthlyGallons);
+
+            // 4. SOS (15-Day) Calculations
+            const sosLitres = dailyLitres * SOS_DAYS;
+            const sosGallons = dailyGallons * SOS_DAYS;
+            const sosTons = toTons(sosLitres); 
+            const sosContainers = toContainers(sosGallons);
+
+
+            // --- Rendering ---
+            
+            // Monthly Litres is used as the max value (100% width) for the visual bar chart.
+            const maxLitres = monthlyLitres; 
+            
+            // Render main usage table
+            usageDataBody.innerHTML = 
+                renderRow('daily_row', dailyLitres, dailyContainers, dailyGallons, dailyTons, maxLitres) +
+                renderRow('weekly_row', weeklyLitres, weeklyContainers, weeklyGallons, weeklyTons, maxLitres) +
+                renderRow('monthly_row', monthlyLitres, monthlyContainers, monthlyGallons, monthlyTons, maxLitres);
+
+            // Render SOS section
+            sosDataContainer.innerHTML = renderSOSCards(sosLitres, sosContainers, sosGallons, sosTons);
+        }
+
+        // Initialize the app on load
+        window.onload = function() {
+            // Set initial language to English (default)
+            setLanguage('en'); 
+            residentsInput.focus();
+        };
+
+    </script>
+</body>
+</html>
