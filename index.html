@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Water Usage Analysis</title>
+    <title>Consumption and Stock Planning Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for advanced charts and visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <style>
         /* Custom font for better readability */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
@@ -15,24 +17,11 @@
         .container-card {
             box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
-        .result-table th, .result-table td {
-            padding: 12px 16px;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0; /* slate-200 */
-        }
-        .result-table th {
-            background-color: #e2e8f0; /* slate-200 */
-            font-weight: 600;
-        }
-        /* Specific style for the visual bar column */
-        .visual-bar-cell {
-            min-width: 200px; /* Ensure minimum width for the bar */
-        }
     </style>
 </head>
 <body class="p-4 sm:p-8">
 
-    <div class="max-w-4xl mx-auto bg-white rounded-xl container-card p-6 sm:p-10">
+    <div class="max-w-7xl mx-auto bg-white rounded-xl container-card p-6 sm:p-10">
         
         <!-- Language Selector -->
         <div class="flex justify-end mb-6">
@@ -40,222 +29,175 @@
                     class="p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-blue-500 focus:border-blue-500">
                 <option value="en">English</option>
                 <option value="hi">हिन्दी (Hindi)</option>
-                <option value="ja">日本語 (Japanese)</option>
-                <option value="id">Bahasa Indonesia (Indonesian)</option>
             </select>
         </div>
 
         <!-- Header -->
-        <header class="text-center mb-8">
-            <h1 id="app-title" class="text-3xl sm:text-4xl font-extrabold text-blue-800">Water Usage Analysis</h1>
-            <p id="subtitle" class="text-gray-600 mt-2 text-lg">Estimate of water requirement per resident</p>
+        <header class="text-center mb-10">
+            <h1 id="app-title" class="text-3xl sm:text-4xl font-extrabold text-teal-700">Consumption and Stock Planning Dashboard</h1>
+            <p id="subtitle" class="text-gray-600 mt-2 text-lg">Daily Usage, Future Projections, and Stock Optimization</p>
         </header>
 
-        <!-- Input Section: Residents and Editable Daily Usage -->
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Input Section: Planning & Stock Parameters -->
+        <div class="mb-10 p-6 bg-teal-50 rounded-lg border border-teal-200 grid grid-cols-1 md:grid-cols-4 gap-6">
             
             <!-- Total Residents Input -->
             <div>
-                <label for="residents" id="residents-label" class="block text-xl font-medium text-blue-700 mb-3">
-                    Total Number of Residents
+                <label for="residents" id="residents-label" class="block text-sm font-medium text-teal-700 mb-1">
+                    Total Residents
                 </label>
-                <input type="number" id="residents" placeholder="e.g., 100" min="0" value="0"
-                       class="w-full p-3 border-2 border-blue-400 rounded-lg text-lg focus:border-blue-600 focus:ring-blue-600 transition duration-150"
+                <input type="number" id="residents" placeholder="e.g., 500" min="0" value="500"
+                       class="w-full p-2 border-2 border-teal-400 rounded-lg text-base focus:border-teal-600 focus:ring-teal-600 transition duration-150"
                        oninput="calculateUsage()">
             </div>
 
-            <!-- Daily Usage Per Person Input (NEW Editable Field) -->
+            <!-- Daily Usage Per Person Input (Still in Litres, as consumption is usually measured in smaller units) -->
             <div>
-                <label for="daily-usage" id="usage-input-label" class="block text-xl font-medium text-blue-700 mb-3">
-                    Daily Water Usage Per Person (Litres)
+                <label for="daily-usage" id="usage-input-label" class="block text-sm font-medium text-teal-700 mb-1">
+                    Daily Usage Per Person (Litres)
                 </label>
                 <input type="number" id="daily-usage" placeholder="e.g., 4" min="0" value="4"
-                       class="w-full p-3 border-2 border-blue-400 rounded-lg text-lg focus:border-blue-600 focus:ring-blue-600 transition duration-150"
+                       class="w-full p-2 border-2 border-teal-400 rounded-lg text-base focus:border-teal-600 focus:ring-teal-600 transition duration-150"
+                       oninput="calculateUsage()">
+            </div>
+            
+            <!-- Current Stock Input (Inventory) - CONVERTED TO GALLONS -->
+            <div>
+                <label for="current-stock" id="stock-input-label" class="block text-sm font-medium text-teal-700 mb-1">
+                    Current Stock (Gallons)
+                </label>
+                <input type="number" id="current-stock" placeholder="e.g., 5263" min="0" value="5263"
+                       class="w-full p-2 border-2 border-teal-400 rounded-lg text-base focus:border-teal-600 focus:ring-teal-600 transition duration-150"
+                       oninput="calculateUsage()">
+            </div>
+            
+            <!-- Target Buffer Days Input (Optimization Goal) -->
+            <div>
+                <label for="buffer-days" id="buffer-days-label" class="block text-sm font-medium text-teal-700 mb-1">
+                    Target Buffer Days
+                </label>
+                <input type="number" id="buffer-days" placeholder="e.g., 60" min="0" value="60"
+                       class="w-full p-2 border-2 border-teal-400 rounded-lg text-base focus:border-teal-600 focus:ring-teal-600 transition duration-150"
                        oninput="calculateUsage()">
             </div>
         </div>
-
-        <!-- Static Constants Display (Information Section) -->
-        <div class="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
-            <div class="bg-indigo-100 p-4 rounded-lg">
-                <p id="const-per-cont-label" class="font-semibold text-indigo-700">Per Container Capacity</p>
-                <p class="text-2xl font-bold text-indigo-900">600 <span id="unit-gallons-1">gallons</span></p>
-            </div>
-            <div class="bg-indigo-100 p-4 rounded-lg">
-                <p id="const-gal-to-lit-label" class="font-semibold text-indigo-700">Gallon to Litre Conversion</p>
-                <p class="text-2xl font-bold text-indigo-900">19 <span id="unit-litres-per-gallon">litres / gallon</span></p>
-            </div>
-        </div>
-
-        <!-- Result Section (Chart) -->
-        <div id="results-container" class="mt-10 hidden">
-            <h2 id="result-header" class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Usage & Requirement Analysis</h2>
+        
+        <!-- Results and Analytics Section -->
+        <div id="results-container" class="mt-8 hidden">
             
-            <!-- Main Usage Table -->
-            <div class="overflow-x-auto shadow-lg rounded-lg mb-8">
-                <table class="min-w-full result-table bg-white">
-                    <thead class="text-xs uppercase tracking-wider text-gray-700">
-                        <tr>
-                            <th id="th-period" class="rounded-tl-lg">Period</th>
-                            <th id="th-litres">Litres (Visual)</th>
-                            <th id="th-gallons">Gallons</th>
-                            <th id="th-tons">Tons (MT)</th>
-                            <th id="th-containers" class="rounded-tr-lg">Containers Needed</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usage-data" class="text-gray-600">
-                        <!-- Data will be inserted here by JavaScript -->
-                    </tbody>
-                </table>
+            <h2 id="chart-header" class="text-2xl font-bold text-gray-800 mb-6">Usage Trends & Stock Projection (Next 30 Days)</h2>
+            
+            <!-- Chart Area -->
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-10 shadow-lg">
+                <canvas id="usageChart"></canvas>
             </div>
 
-            <!-- SOS/Emergency Storage Section -->
-            <div class="p-6 bg-red-50 rounded-lg border-2 border-red-300">
-                <h3 id="sos-header" class="text-xl font-bold text-red-700 mb-3 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.398 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    SOS (15 Days) Emergency Storage Requirement
-                </h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="sos-data">
-                    <!-- SOS Data will be inserted here by JavaScript -->
+            <!-- Key Metrics: SOS, Stock Days, Optimization -->
+            <h2 id="metrics-header" class="text-2xl font-bold text-gray-800 mb-6">Key Planning & Optimization Metrics</h2>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <!-- 1. SOS Requirement (15 Days) - DISPLAY IN GALLONS & CONTAINERS -->
+                <div class="p-4 rounded-xl bg-red-100 border-2 border-red-400 text-center shadow-md">
+                    <p id="sos-header" class="text-sm font-semibold text-red-800 uppercase">SOS (15 DAYS MINIMUM) STORAGE</p>
+                    <p id="sos-gallons" class="text-3xl font-extrabold text-red-900 mt-1">0</p>
+                    <p id="sos-containers" class="text-sm text-red-700"><span id="sos-containers-count">0</span> Containers (600 Gallons each)</p>
+                </div>
+                
+                <!-- 2. Target Buffer Stock (For Optimization) - DISPLAY IN GALLONS & CONTAINERS -->
+                <div class="p-4 rounded-xl bg-teal-100 border-2 border-teal-400 text-center shadow-md">
+                    <p id="buffer-header" class="text-sm font-semibold text-teal-800 uppercase">TARGET <span id="buffer-days-display">60</span> DAY BUFFER STOCK</p>
+                    <p id="buffer-gallons" class="text-3xl font-extrabold text-teal-900 mt-1">0</p>
+                    <p id="buffer-containers" class="text-sm text-teal-700"><span id="buffer-containers-count">0</span> Containers (600 Gallons each)</p>
+                </div>
+                
+                <!-- 3. Current Stock Days Remaining -->
+                <div class="p-4 rounded-xl bg-indigo-100 border-2 border-indigo-400 text-center shadow-md">
+                    <p id="days-left-header" class="text-sm font-semibold text-indigo-800 uppercase">CURRENT STOCK DAYS REMAINING</p>
+                    <p id="days-left" class="text-3xl font-extrabold text-indigo-900 mt-1">0</p>
+                    <p id="days-left-note" class="text-sm text-indigo-700">Days (Based on Average Usage)</p>
+                </div>
+
+                <!-- 4. Stock Maintenance Status -->
+                <div id="stock-status-card" class="p-4 rounded-xl text-center shadow-lg">
+                    <p id="status-label" class="text-sm font-semibold uppercase">STOCK STATUS</p>
+                    <p id="status-message" class="text-2xl font-extrabold mt-2">OPTIMAL</p>
                 </div>
             </div>
         </div>
 
         <!-- Error/Initial Message -->
         <div id="initial-message" class="text-center text-gray-500 mt-10 p-4 bg-gray-100 rounded-lg">
-            <span id="initial-message-text">Enter the number of residents and view the analysis.</span>
+            <span id="initial-message-text">Enter the number of residents, daily usage, and current stock to view the dashboard analysis.</span>
         </div>
 
     </div>
 
     <script>
-        // --- Constants (Fixed) ---
-        const CONT_GALLONS = 600;
-        const LITRES_PER_GALLON = 19;
-        const DAYS_IN_WEEK = 7;
-        const DAYS_IN_MONTH = 30; // Simplified monthly calculation
+        // --- Constants ---
+        const CONT_GALLONS = 600; // Container capacity in Gallons
+        const LITRES_PER_GALLON_FACTOR = 19; // Custom conversion factor (1 Gallon = 19 Litres, based on previous code)
         const SOS_DAYS = 15;
+        let usageChart = null;
         let currentLang = 'en';
 
         // --- Translations Data ---
         const translations = {
             'en': {
-                'app_title': 'Water Usage Analysis',
-                'subtitle': 'Estimate of water requirement per resident',
-                'residents_label': 'Total Number of Residents',
-                'residents_placeholder': 'e.g., 100',
-                'usage_input_label': 'Daily Water Usage Per Person (Litres)', // NEW
-                'usage_input_placeholder': 'e.g., 4', // NEW
-                'const_per_cont': 'Per Container Capacity',
-                'const_gal_to_lit': 'Gallon to Litre Conversion',
-                'result_header': 'Usage & Requirement Analysis',
-                'th_period': 'Period',
-                'th_litres': 'Litres (Visual)',
-                'th_gallons': 'Gallons',
-                'th_tons': 'Tons (MT)',
-                'th_containers': 'Containers Needed',
-                'daily_row': 'Daily',
-                'weekly_row': 'Weekly',
-                'monthly_row': 'Monthly (30 Days)',
-                'sos_header': 'SOS (15 Days) Emergency Storage Requirement',
-                'sos_litres': 'Litres',
-                'sos_gallons': 'Gallons',
-                'sos_tons': 'Tons (MT)',
-                'sos_containers': 'Containers',
-                'sos_suffix': '(Rounded Up)',
-                'unit_gallons': 'gallons',
-                'unit_litres_per_gallon': 'litres / gallon',
-                'unit_tons': 'Metric Tons (MT)',
-                'initial_msg': 'Enter the number of residents and daily usage to view the analysis.'
+                'app_title': 'Consumption and Stock Planning Dashboard',
+                'subtitle': 'Daily Usage, Future Projections, and Stock Optimization',
+                'residents_label': 'Total Residents',
+                'residents_placeholder': 'e.g., 500',
+                'usage_input_label': 'Daily Usage Per Person (Litres)', // Kept in Litres for user input
+                'usage_input_placeholder': 'e.g., 4',
+                'stock_input_label': 'Current Stock (Gallons)', // CHANGED to GALLONS
+                'stock_input_placeholder': 'e.g., 5263', // Example: 100000 Litres / 19 = 5263 Gallons
+                'buffer_days_label': 'Target Buffer Days',
+                'buffer_days_placeholder': 'e.g., 60',
+                'chart_header': 'Usage Trends & Stock Projection (Next 30 Days)',
+                'metrics_header': 'Key Planning & Optimization Metrics',
+                'sos_header': 'SOS (15 DAYS MINIMUM) STORAGE (GALLONS)', // Added GALLONS
+                'buffer_header': 'TARGET {DAYS} DAY BUFFER STOCK (GALLONS)', // Added GALLONS
+                'days_left_header': 'CURRENT STOCK DAYS REMAINING',
+                'days_left_note': 'Days (Based on Average Usage)',
+                'status_label': 'STOCK STATUS',
+                'status_optimal': 'OPTIMAL',
+                'status_warning': 'WARNING',
+                'status_critical': 'CRITICAL',
+                'chart_usage_title': 'Simulated Daily Usage (Litres)',
+                'chart_stock_title': 'Stock Days Left',
+                'chart_days_label': 'Day',
+                'chart_projection': 'Projected Usage',
+                'chart_sos': 'SOS Level (15 Days)',
+                'initial_msg': 'Enter the number of residents, daily usage, and current stock (in Gallons) to view the dashboard analysis.'
             },
             'hi': {
-                'app_title': 'पानी के उपयोग का विश्लेषण',
-                'subtitle': 'प्रति निवासी पानी की आवश्यकता का अनुमान',
-                'residents_label': 'कुल निवासियों की संख्या',
-                'residents_placeholder': 'उदाहरण: 100',
-                'usage_input_label': 'प्रति व्यक्ति दैनिक पानी का उपयोग (लीटर)', // NEW
-                'usage_input_placeholder': 'उदाहरण: 4', // NEW
-                'const_per_cont': 'प्रति कंटेनर क्षमता',
-                'const_gal_to_lit': 'गैलन से लीटर में रूपांतरण',
-                'result_header': 'उपयोग और आवश्यकता विश्लेषण',
-                'th_period': 'अवधि',
-                'th_litres': 'लीटर (दृश्य)',
-                'th_gallons': 'गैलन',
-                'th_tons': 'टन (MT)',
-                'th_containers': 'आवश्यक कंटेनर',
-                'daily_row': 'दैनिक',
-                'weekly_row': 'साप्ताहिक',
-                'monthly_row': 'मासिक (30 दिन)',
-                'sos_header': 'SOS (15 दिन) आपातकालीन भंडारण आवश्यकता',
-                'sos_litres': 'लीटर',
-                'sos_gallons': 'गैलन',
-                'sos_tons': 'टन (MT)',
-                'sos_containers': 'कंटेनर',
-                'sos_suffix': '(गोल किया गया)',
-                'unit_gallons': 'गैलन',
-                'unit_litres_per_gallon': 'लीटर / गैलन',
-                'unit_tons': 'मीट्रिक टन (MT)',
-                'initial_msg': 'विश्लेषण देखने के लिए निवासियों की संख्या और दैनिक उपयोग दर्ज करें।'
-            },
-            'ja': {
-                'app_title': '水使用量分析',
-                'subtitle': '住民一人当たりの水必要量の推定',
-                'residents_label': '総居住者数',
-                'residents_placeholder': '例: 100',
-                'usage_input_label': '一人当たりの日々の水使用量 (リットル)', // NEW
-                'usage_input_placeholder': '例: 4', // NEW
-                'const_per_cont': 'コンテナあたりの容量',
-                'const_gal_to_lit': 'ガロンからリットルへの換算',
-                'result_header': '使用量と必要量の分析',
-                'th_period': '期間',
-                'th_litres': 'リットル (視覚化)',
-                'th_gallons': 'ガロン',
-                'th_tons': 'トン (MT)',
-                'th_containers': '必要なコンテナ数',
-                'daily_row': '日次',
-                'weekly_row': '週次',
-                'monthly_row': '月次 (30日間)',
-                'sos_header': 'SOS (15日間) 緊急貯蔵要件',
-                'sos_litres': 'リットル',
-                'sos_gallons': 'ガロン',
-                'sos_tons': 'トン (MT)',
-                'sos_containers': 'コンテナ',
-                'sos_suffix': '(切り上げ)',
-                'unit_gallons': 'ガロン',
-                'unit_litres_per_gallon': 'リットル / ガロン',
-                'unit_tons': 'メートルトン (MT)',
-                'initial_msg': '分析を見るために、居住者数と日々の使用量を入力してください。'
-            },
-            'id': {
-                'app_title': 'Analisis Penggunaan Air',
-                'subtitle': 'Estimasi kebutuhan air per penduduk',
-                'residents_label': 'Jumlah Total Penduduk',
-                'residents_placeholder': 'Contoh: 100',
-                'usage_input_label': 'Penggunaan Air Harian Per Orang (Liter)', // NEW
-                'usage_input_placeholder': 'Contoh: 4', // NEW
-                'const_per_cont': 'Kapasitas Per Kontainer',
-                'const_gal_to_lit': 'Konversi Galon ke Liter',
-                'result_header': 'Analisis Penggunaan & Kebutuhan',
-                'th_period': 'Periode',
-                'th_litres': 'Liter (Visual)',
-                'th_gallons': 'Galon',
-                'th_tons': 'Ton (MT)',
-                'th_containers': 'Kontainer yang Dibutuhkan',
-                'daily_row': 'Harian',
-                'weekly_row': 'Mingguan',
-                'monthly_row': 'Bulanan (30 Hari)',
-                'sos_header': 'Kebutuhan Penyimpanan Darurat SOS (15 Hari)',
-                'sos_litres': 'Liter',
-                'sos_gallons': 'Galon',
-                'sos_tons': 'Ton (MT)',
-                'sos_containers': 'Kontainer',
-                'sos_suffix': '(Dibulatkan Ke Atas)',
-                'unit_gallons': 'galon',
-                'unit_litres_per_gallon': 'liter / galon',
-                'unit_tons': 'Ton Metrik (MT)',
-                'initial_msg': 'Masukkan jumlah penduduk dan penggunaan harian untuk melihat analisis.'
+                'app_title': 'खपत और स्टॉक योजना डैशबोर्ड',
+                'subtitle': 'दैनिक उपयोग, भविष्य के अनुमान और स्टॉक अनुकूलन',
+                'residents_label': 'कुल निवासी',
+                'residents_placeholder': 'उदाहरण: 500',
+                'usage_input_label': 'प्रति व्यक्ति दैनिक उपयोग (लीटर)', // Kept in Litres
+                'usage_input_placeholder': 'उदाहरण: 4',
+                'stock_input_label': 'वर्तमान स्टॉक (गैलन)', // CHANGED to GALLONS
+                'stock_input_placeholder': 'उदाहरण: 5263',
+                'buffer_days_label': 'लक्षित बफर दिन',
+                'buffer_days_placeholder': 'उदाहरण: 60',
+                'chart_header': 'उपयोग रुझान और स्टॉक अनुमान (अगले 30 दिन)',
+                'metrics_header': 'मुख्य योजना और अनुकूलन मेट्रिक्स',
+                'sos_header': 'SOS (15 दिन न्यूनतम) भंडारण (गैलन)', // Added GALLONS
+                'buffer_header': 'लक्षित {DAYS} दिन का बफर स्टॉक (गैलन)', // Added GALLONS
+                'days_left_header': 'शेष वर्तमान स्टॉक दिन',
+                'days_left_note': 'दिन (औसत उपयोग पर आधारित)',
+                'status_label': 'स्टॉक स्थिति',
+                'status_optimal': 'सर्वोत्तम',
+                'status_warning': 'चेतावनी',
+                'status_critical': 'अतिसंवेदनशील',
+                'chart_usage_title': 'सिम्युलेटेड दैनिक उपयोग (लीटर)',
+                'chart_stock_title': 'शेष स्टॉक दिन',
+                'chart_days_label': 'दिन',
+                'chart_projection': 'अनुमानित उपयोग',
+                'chart_sos': 'SOS स्तर (15 दिन)',
+                'initial_msg': 'डैशबोर्ड विश्लेषण देखने के लिए निवासियों की संख्या, दैनिक उपयोग और वर्तमान स्टॉक (गैलन में) दर्ज करें।'
             }
         };
 
@@ -263,124 +205,160 @@
             'app-title': document.getElementById('app-title'),
             'subtitle': document.getElementById('subtitle'),
             'residents-label': document.getElementById('residents-label'),
-            'usage-input-label': document.getElementById('usage-input-label'), // NEW
-            'residents': document.getElementById('residents'), // for placeholder
-            'daily-usage': document.getElementById('daily-usage'), // for placeholder
-            'const-per-cont-label': document.getElementById('const-per-cont-label'),
-            'const-gal-to-lit-label': document.getElementById('const-gal-to-lit-label'),
-            'result-header': document.getElementById('result-header'),
-            'th-period': document.getElementById('th-period'),
-            'th-litres': document.getElementById('th-litres'),
-            'th-gallons': document.getElementById('th-gallons'),
-            'th-tons': document.getElementById('th-tons'),
-            'th-containers': document.getElementById('th-containers'),
+            'usage-input-label': document.getElementById('usage-input-label'),
+            'stock-input-label': document.getElementById('stock-input-label'),
+            'buffer-days-label': document.getElementById('buffer-days-label'),
+            'residents': document.getElementById('residents'),
+            'daily-usage': document.getElementById('daily-usage'),
+            'current-stock': document.getElementById('current-stock'),
+            'buffer-days': document.getElementById('buffer-days'),
+            'chart-header': document.getElementById('chart-header'),
+            'metrics-header': document.getElementById('metrics-header'),
             'sos-header': document.getElementById('sos-header'),
-            'unit-gallons-1': document.getElementById('unit-gallons-1'),
-            'unit-litres-per-gallon': document.getElementById('unit-litres-per-gallon'),
-            'initial-message-text': document.getElementById('initial-message-text')
+            'buffer-header': document.getElementById('buffer-header'),
+            'days-left-header': document.getElementById('days-left-header'),
+            'days-left-note': document.getElementById('days-left-note'),
+            'status-label': document.getElementById('status-label'),
+            'initial-message-text': document.getElementById('initial-message-text'),
+            'buffer-days-display': document.getElementById('buffer-days-display'),
+            'sos-gallons': document.getElementById('sos-gallons'), // New ID for Gallons
+            'buffer-gallons': document.getElementById('buffer-gallons') // New ID for Gallons
         };
-
-
-        // --- Helper Functions ---
+        
         const resultsContainer = document.getElementById('results-container');
         const initialMessage = document.getElementById('initial-message');
-        const usageDataBody = document.getElementById('usage-data');
-        const sosDataContainer = document.getElementById('sos-data');
-        const residentsInput = document.getElementById('residents');
-        const dailyUsageInput = document.getElementById('daily-usage'); // NEW
-
-
+        
         /**
-         * Converts litres to gallons.
-         * @param {number} litres
-         * @returns {number} Gallons
+         * Utility function to format numbers (e.g., 1,234.56)
          */
-        function toGallons(litres) {
-            return litres / LITRES_PER_GALLON;
+        function formatNumber(num) {
+            return num.toLocaleString(currentLang, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
         }
 
         /**
-         * Converts litres to metric tons (1 MT = 1000 Litres for water).
-         * @param {number} litres
-         * @returns {number} Metric Tons
+         * Converts gallons to containers (rounded up)
          */
-        function toTons(litres) {
-            return litres / 1000;
-        }
-
-        /**
-         * Calculates the number of containers required, rounded up.
-         * @param {number} gallons
-         * @returns {number} Number of containers (integer)
-         */
-        function toContainers(gallons) {
+        function gallonsToContainers(gallons) {
             return Math.ceil(gallons / CONT_GALLONS);
         }
 
         /**
-         * Formats a number for display with two decimal places.
-         * @param {number} num
-         * @returns {string} Formatted number
+         * Simulates daily consumption with a slight, realistic fluctuation (for better chart visualization)
          */
-        function formatNumber(num) {
-            // Using currentLang locale for number formatting
-            return num.toLocaleString(currentLang, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        function generateDailyUsage(baseDailyLitres, days) {
+            const data = [];
+            for (let i = 0; i < days; i++) {
+                // Apply a random fluctuation between -5% and +5%
+                const fluctuation = 1 + (Math.random() * 0.1 - 0.05);
+                data.push(baseDailyLitres * fluctuation);
+            }
+            return data;
         }
-        
+
         /**
-         * Renders a single row of usage data, using current language translations.
+         * Renders the Chart.js visualization.
          */
-        function renderRow(key, litres, containers, gallons, tons, maxLitres) {
+        function renderChart(dailyUsageData, dailyAvgLitres) {
             const T = translations[currentLang];
-            // Calculate width percentage relative to the monthly usage (for visual impact)
-            const barWidth = maxLitres > 0 ? (litres / maxLitres) * 100 : 0;
+            const ctx = document.getElementById('usageChart').getContext('2d');
             
-            return `
-                <tr class="hover:bg-blue-50">
-                    <td class="font-bold text-gray-800">${T[key]}</td>
-                    <td class="visual-bar-cell">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-1/3 min-w-[70px] font-semibold">${formatNumber(litres)}</span>
-                            <div class="flex-grow h-6 bg-blue-200 rounded-full overflow-hidden">
-                                <!-- Dynamic Bar -->
-                                <div class="h-full bg-blue-600 rounded-full transition-all duration-700 ease-out shadow-md" 
-                                    style="width: ${barWidth.toFixed(2)}%;">
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>${formatNumber(gallons)}</td>
-                    <td>${formatNumber(tons)}</td>
-                    <td class="text-blue-700 font-extrabold">${containers.toLocaleString()}</td>
-                </tr>
-            `;
+            // Labels for the next 30 days
+            const labels = Array.from({ length: 30 }, (_, i) => `${T.chart_days_label} ${i + 1}`);
+
+            // Read stock input as Gallons and convert to Litres for calculation
+            const currentStockGallons = parseFloat(elements['current-stock'].value) || 0;
+            let stockLitres = currentStockGallons * LITRES_PER_GALLON_FACTOR;
+            
+            // Generate Stock Days Left dataset (for the right Y-axis)
+            const stockDaysData = [];
+            
+            for (let i = 0; i < dailyUsageData.length; i++) {
+                stockLitres -= dailyUsageData[i];
+                const daysLeft = stockLitres > 0 ? stockLitres / dailyAvgLitres : 0;
+                stockDaysData.push(daysLeft);
+            }
+            
+            // Find the day when stock drops below 15 days (SOS)
+            const sosDepletionDay = stockDaysData.findIndex(days => days < SOS_DAYS);
+
+            // Recreate the chart if it already exists
+            if (usageChart) {
+                usageChart.destroy();
+            }
+
+            usageChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: T.chart_projection,
+                            data: dailyUsageData,
+                            borderColor: 'rgb(13, 148, 136)', // Teal 600
+                            backgroundColor: 'rgba(13, 148, 136, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: T.chart_stock_title,
+                            data: stockDaysData,
+                            borderColor: 'rgb(79, 70, 229)', // Indigo 600
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            fill: false,
+                            tension: 0.2,
+                            borderDash: [5, 5],
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: T.chart_sos,
+                            data: Array(30).fill(SOS_DAYS),
+                            borderColor: 'rgb(220, 38, 38)', // Red 600
+                            backgroundColor: 'transparent',
+                            pointRadius: 0,
+                            borderWidth: 1,
+                            borderDash: [10, 5],
+                            yAxisID: 'y1',
+                            tooltip: { enabled: false }
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: T.chart_days_label }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: T.chart_usage_title, color: 'rgb(13, 148, 136)' },
+                            grid: { drawOnChartArea: false }, // Only draw grid lines for the stock axis
+                            beginAtZero: true
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: T.chart_stock_title, color: 'rgb(79, 70, 229)' },
+                            min: 0,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + ' Days';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            return sosDepletionDay; // Return the key info on when depletion occurs
         }
-        
-        /**
-         * Renders the SOS data section, using current language translations.
-         */
-        function renderSOSCards(litres, containers, gallons, tons) {
-            const T = translations[currentLang];
-            return `
-                <div class="bg-red-100 p-3 rounded-lg text-center shadow-sm">
-                    <p class="font-semibold text-red-800">${T.sos_litres}</p>
-                    <p class="text-xl font-bold text-red-900">${formatNumber(litres)}</p>
-                </div>
-                <div class="bg-red-100 p-3 rounded-lg text-center shadow-sm">
-                    <p class="font-semibold text-red-800">${T.sos_gallons}</p>
-                    <p class="text-xl font-bold text-red-900">${formatNumber(gallons)}</p>
-                </div>
-                <div class="bg-red-100 p-3 rounded-lg text-center shadow-sm">
-                    <p class="font-semibold text-red-800">${T.sos_tons}</p>
-                    <p class="text-xl font-bold text-red-900">${formatNumber(tons)}</p>
-                </div>
-                <div class="bg-red-200 p-3 rounded-lg text-center shadow-lg transform scale-105">
-                    <p class="font-semibold text-red-900">${T.sos_containers}</p>
-                    <p class="text-2xl font-extrabold text-red-900">${containers.toLocaleString()} ${T.sos_suffix}</p>
-                </div>
-            `;
-        }
-        
+
         /**
          * Updates all static text elements based on the selected language.
          */
@@ -392,25 +370,18 @@
             elements['app-title'].textContent = T.app_title;
             elements['subtitle'].textContent = T.subtitle;
             elements['residents-label'].textContent = T.residents_label;
-            elements['usage-input-label'].textContent = T.usage_input_label; // NEW
+            elements['usage-input-label'].textContent = T.usage_input_label;
+            elements['stock-input-label'].textContent = T.stock_input_label;
+            elements['buffer-days-label'].textContent = T.buffer_days_label;
             elements['residents'].placeholder = T.residents_placeholder;
-            elements['daily-usage'].placeholder = T.usage_input_placeholder; // NEW
-            elements['const-per-cont-label'].textContent = T.const_per_cont;
-            elements['const-gal-to-lit-label'].textContent = T.const_gal_to_lit;
-            elements['result-header'].textContent = T.result_header;
-            elements['th-period'].textContent = T.th_period;
-            elements['th-litres'].textContent = T.th_litres;
-            elements['th-gallons'].textContent = T.th_gallons;
-            elements['th-tons'].textContent = T.th_tons;
-            elements['th-containers'].textContent = T.th_containers;
-            elements['sos-header'].childNodes[2].textContent = T.sos_header; // Targeting text node after SVG
-            elements['initial-message-text'].textContent = T.initial_msg;
-
-            // Update units
-            elements['unit-gallons-1'].textContent = T.unit_gallons;
-            elements['unit-litres-per-gallon'].textContent = T.unit_litres_per_gallon;
-
-            // Re-run calculation to update table rows (which use language variables)
+            elements['daily-usage'].placeholder = T.usage_input_placeholder;
+            elements['current-stock'].placeholder = T.stock_input_placeholder;
+            elements['buffer-days'].placeholder = T.buffer_days_placeholder;
+            elements['chart-header'].textContent = T.chart_header;
+            elements['metrics-header'].textContent = T.metrics_header;
+            elements['days-left-note'].textContent = T.days_left_note;
+            
+            // Re-run calculation to update all dynamic text and chart labels
             calculateUsage();
         }
 
@@ -418,15 +389,20 @@
          * Main calculation and rendering function.
          */
         function calculateUsage() {
-            const residents = parseFloat(residentsInput.value) || 0;
-            const dailyUsagePerResident = parseFloat(dailyUsageInput.value) || 0; // Read the new editable input
+            const residents = parseFloat(elements['residents'].value) || 0;
+            const dailyUsagePerResident = parseFloat(elements['daily-usage'].value) || 0;
+            // Read Current Stock as Gallons
+            const currentStockGallons = parseFloat(elements['current-stock'].value) || 0;
+            const bufferDays = parseFloat(elements['buffer-days'].value) || 0;
+            const T = translations[currentLang];
 
-            if (residents <= 0 || dailyUsagePerResident <= 0) {
+            const isValid = residents > 0 && dailyUsagePerResident > 0 && currentStockGallons >= 0 && bufferDays >= 0;
+
+            if (!isValid) {
                 // Hide results and show initial message if input is invalid
                 resultsContainer.classList.add('hidden');
                 initialMessage.classList.remove('hidden');
-                residentsInput.value = residents < 0 ? 0 : residents; 
-                dailyUsageInput.value = dailyUsagePerResident < 0 ? 0 : dailyUsagePerResident;
+                elements['initial-message-text'].textContent = T.initial_msg;
                 return;
             }
 
@@ -434,52 +410,89 @@
             resultsContainer.classList.remove('hidden');
             initialMessage.classList.add('hidden');
 
+            // 1. Core Calculations
+            const dailyAvgLitres = residents * dailyUsagePerResident;
 
-            // 1. Daily Calculations
-            const dailyLitres = residents * dailyUsagePerResident; // Using editable value
-            const dailyGallons = toGallons(dailyLitres);
-            const dailyTons = toTons(dailyLitres);
-            const dailyContainers = toContainers(dailyGallons);
+            // Convert Litre-based daily usage into Gallons
+            const dailyAvgGallons = dailyAvgLitres / LITRES_PER_GALLON_FACTOR;
 
-            // 2. Weekly Calculations
-            const weeklyLitres = dailyLitres * DAYS_IN_WEEK;
-            const weeklyGallons = dailyGallons * DAYS_IN_WEEK;
-            const weeklyTons = toTons(weeklyLitres);
-            const weeklyContainers = toContainers(weeklyGallons);
-
-            // 3. Monthly Calculations (30 days)
-            const monthlyLitres = dailyLitres * DAYS_IN_MONTH;
-            const monthlyGallons = dailyGallons * DAYS_IN_MONTH;
-            const monthlyTons = toTons(monthlyLitres);
-            const monthlyContainers = toContainers(monthlyGallons);
-
-            // 4. SOS (15-Day) Calculations
-            const sosLitres = dailyLitres * SOS_DAYS;
-            const sosGallons = dailyGallons * SOS_DAYS;
-            const sosTons = toTons(sosLitres);
-            const sosContainers = toContainers(sosGallons);
-
-
-            // --- Rendering ---
+            // Calculate Stock Days Remaining (how long current stock will last)
+            const daysLeft = currentStockGallons > 0 ? currentStockGallons / dailyAvgGallons : 0;
             
-            // Monthly Litres is used as the max value (100% width) for the visual bar chart.
-            const maxLitres = monthlyLitres;
+            // Calculate SOS and Buffer Requirements (in Gallons)
+            const sosGallons = dailyAvgGallons * SOS_DAYS;
+            const bufferGallons = dailyAvgGallons * bufferDays;
             
-            // Render main usage table
-            usageDataBody.innerHTML = 
-                renderRow('daily_row', dailyLitres, dailyContainers, dailyGallons, dailyTons, maxLitres) +
-                renderRow('weekly_row', weeklyLitres, weeklyContainers, weeklyGallons, weeklyTons, maxLitres) +
-                renderRow('monthly_row', monthlyLitres, monthlyContainers, monthlyGallons, monthlyTons, maxLitres);
+            // Round to 1 decimal place for display
+            const daysLeftFormatted = daysLeft.toFixed(1);
 
-            // Render SOS section
-            sosDataContainer.innerHTML = renderSOSCards(sosLitres, sosContainers, sosGallons, sosTons);
+            // 2. Data Simulation for Chart (in Litres, as usage input is in Litres)
+            const dailyUsageData = generateDailyUsage(dailyAvgLitres, 30);
+            
+            // 3. Render Chart
+            const sosDepletionDay = renderChart(dailyUsageData, dailyAvgLitres);
+
+            // 4. Update Metric Cards
+            
+            // SOS Metric (Red Card)
+            document.getElementById('sos-header').textContent = T.sos_header;
+            elements['sos-gallons'].textContent = formatNumber(sosGallons);
+            document.getElementById('sos-containers-count').textContent = gallonsToContainers(sosGallons).toLocaleString();
+            
+            // Buffer Metric (Teal Card - Optimization Target)
+            document.getElementById('buffer-header').textContent = T.buffer_header.replace('{DAYS}', bufferDays.toLocaleString());
+            elements['buffer-days-display'].textContent = bufferDays.toLocaleString(); // Update embedded number
+            elements['buffer-gallons'].textContent = formatNumber(bufferGallons);
+            document.getElementById('buffer-containers-count').textContent = gallonsToContainers(bufferGallons).toLocaleString();
+            
+            // Days Left Metric (Indigo Card)
+            document.getElementById('days-left-header').textContent = T.days_left_header;
+            document.getElementById('days-left').textContent = daysLeftFormatted;
+            
+            // Stock Status Metric (Status Card)
+            const statusCard = document.getElementById('stock-status-card');
+            const statusMessage = document.getElementById('status-message');
+            
+            statusCard.className = 'p-4 rounded-xl text-center shadow-lg'; // Reset classes
+            document.getElementById('status-label').textContent = T.status_label;
+            
+            if (daysLeft >= bufferDays) {
+                statusCard.classList.add('bg-green-100', 'border-2', 'border-green-400');
+                statusMessage.textContent = T.status_optimal;
+                statusMessage.classList.remove('text-red-900', 'text-amber-900');
+                statusMessage.classList.add('text-green-900');
+            } else if (daysLeft >= SOS_DAYS) {
+                statusCard.classList.add('bg-amber-100', 'border-2', 'border-amber-400');
+                statusMessage.textContent = T.status_warning;
+                statusMessage.classList.remove('text-red-900', 'text-green-900');
+                statusMessage.classList.add('text-amber-900');
+            } else {
+                statusCard.classList.add('bg-red-100', 'border-2', 'border-red-400');
+                statusMessage.textContent = T.status_critical;
+                statusMessage.classList.remove('text-green-900', 'text-amber-900');
+                statusMessage.classList.add('text-red-900');
+            }
+            
+            // Optional: If stock depletes within the 30-day chart projection, add a critical note
+            const existingDepletionNote = document.getElementById('depletion-note');
+            
+            if (sosDepletionDay !== -1 && daysLeft < SOS_DAYS) {
+                const depletionNoteText = `${T.status_critical}! Stock drops below SOS in the next ${sosDepletionDay} days.`;
+                if (!existingDepletionNote) {
+                     statusMessage.insertAdjacentHTML('afterend', `<p id="depletion-note" class="text-xs mt-2 text-red-600 font-medium">${depletionNoteText}</p>`);
+                } else {
+                    existingDepletionNote.textContent = depletionNoteText;
+                }
+            } else if (existingDepletionNote) {
+                existingDepletionNote.remove();
+            }
         }
 
         // Initialize the app on load
         window.onload = function() {
             // Set initial language to English (default)
             setLanguage('en');
-            residentsInput.focus();
+            elements['residents'].focus();
         };
 
     </script>
