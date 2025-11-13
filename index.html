@@ -19,9 +19,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 <style>
-  body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f3f6f9; }
+  body { font-family: Inter, ui-sans-serif, system-ui, -apple-system; background:#f3f6f9; }
   table td, table th { padding: 6px 8px; border: 1px solid rgba(15,23,42,0.06); }
-  td input[type="text"], td input[type="number"] { width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; }
+  td input[type="text"], td input[type="number"], td input[type="month"] {
+      width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;
+  }
   .sticky-head th { position: sticky; top:0; background:white; z-index:2; }
   .small { font-size:0.85rem; color:#475569; }
   .muted { color:#6b7280; }
@@ -31,6 +33,7 @@
   .small-table td, .small-table th { padding:6px 8px; font-size:0.85rem; }
 </style>
 </head>
+
 <body class="p-6">
 
 <div class="max-w-7xl mx-auto">
@@ -38,44 +41,37 @@
   <header class="flex items-center justify-between mb-6">
     <div>
       <h1 class="text-2xl font-bold text-slate-800">Water Provision — Editable Sheet & Professional Analysis</h1>
-      <p class="small mt-1">Deep analysis tailored for TUCC Project. Edit numbers — analysis updates automatically.</p>
+      <p class="small mt-1">Executive analysis suitable for Japanese management & BP client reporting.</p>
     </div>
 
     <div class="flex gap-2 items-center">
-
       <button id="add-row" class="px-3 py-2 bg-teal-600 text-white rounded">Add Month</button>
       <button id="reset-sample" class="px-3 py-2 bg-gray-200 rounded small">Load Sample</button>
       <button id="download-csv" class="px-3 py-2 bg-indigo-600 text-white rounded">Download CSV</button>
-
-      <!-- NEW BUTTONS -->
       <button id="download-excel" class="px-3 py-2 bg-green-600 text-white rounded">Download Excel</button>
       <button id="download-pdf" class="px-3 py-2 bg-red-600 text-white rounded">Download PDF</button>
-
     </div>
   </header>
 
-  <!-- Controls -->
+  <!-- Controls Section -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     <div class="p-4 bg-white rounded shadow-sm">
       <label class="small muted">Container capacity (gallons)</label>
       <input id="container-cap" type="number" value="600" class="mt-1" />
     </div>
     <div class="p-4 bg-white rounded shadow-sm">
-      <label class="small muted">Litres per Gallon (used for conversion)</label>
+      <label class="small muted">Litres per Gallon (conversion)</label>
       <input id="litres-per-gallon" type="number" value="19" class="mt-1" />
     </div>
     <div class="p-4 bg-white rounded shadow-sm">
-      <label class="small muted">Default Buffer Days (per month)</label>
+      <label class="small muted">Default Buffer Days</label>
       <input id="default-buffer-days" type="number" value="30" class="mt-1" />
     </div>
   </div>
 
   <!-- Editable Sheet -->
   <div class="bg-white rounded-lg p-4 mb-6">
-    <div class="flex justify-between items-center mb-3">
-      <h2 class="font-semibold">Monthly Sheet</h2>
-      <p class="small muted">POB / Days / Rate — edit values and review recommendations for procurement & shipping.</p>
-    </div>
+    <h2 class="font-semibold mb-3">Monthly Sheet</h2>
 
     <div class="table-wrap">
       <table id="sheet-table" class="min-w-full bg-white">
@@ -84,325 +80,356 @@
             <th>Month</th>
             <th>POB</th>
             <th>Days</th>
-            <th>Rate (L/person/day)</th>
+            <th>Rate (L/day)</th>
             <th>Total Water (L)</th>
             <th>Total Water (Gallons)</th>
             <th>Buffer Days</th>
             <th>Buffer (Gallons)</th>
-            <th>Containers (per buffer)</th>
+            <th>Containers</th>
             <th>Action</th>
           </tr>
         </thead>
+
         <tbody id="sheet-body"></tbody>
+
       </table>
     </div>
 
     <div class="mt-3 flex gap-2">
       <button id="apply-buffer-all" class="px-3 py-2 bg-emerald-600 text-white rounded small">Apply Buffer to All</button>
-      <button id="clear-table" class="px-3 py-2 bg-red-100 text-red-700 rounded small">Clear Table</button>
+      <button id="clear-table" class="px-3 py-2 bg-red-100 text-red-700 rounded small">Clear All</button>
     </div>
   </div>
 
-  <!-- Charts & Analysis -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+<!-- Charts + Analysis Section -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-    <div class="bg-white p-4 rounded shadow-sm">
-      <h3 class="font-semibold mb-3">Charts</h3>
-      <canvas id="containersChart" height="220"></canvas>
-      <div class="mt-4">
-        <canvas id="bufferChart" height="180"></canvas>
-      </div>
+  <div class="bg-white p-4 rounded shadow-sm">
+    <h3 class="font-semibold mb-3">Charts</h3>
+    <canvas id="containersChart" height="220"></canvas>
+    <div class="mt-4">
+      <canvas id="bufferChart" height="180"></canvas>
     </div>
+  </div>
 
-    <div class="bg-white p-4 rounded shadow-sm">
-      <h3 class="font-semibold mb-3">Executive Analysis & Recommendations</h3>
+  <div class="bg-white p-4 rounded shadow-sm">
+    <h3 class="font-semibold mb-3">Executive Analysis & Recommendations</h3>
+    <div id="analysis" class="text-sm small muted space-y-3"></div>
 
-      <!-- Executive summary -->
-      <div id="analysis" class="text-sm small muted space-y-3"></div>
-
-      <div class="mt-4 pt-3 border-t">
-        <h4 class="font-medium">Key Performance Indicators</h4>
-        <div class="grid grid-cols-2 gap-2 mt-2">
-          <div class="p-3 bg-slate-50 rounded">
-            <div class="small muted">Total Containers Required (sum)</div>
-            <div id="total-cont-all" class="kpi">0</div>
-          </div>
-          <div class="p-3 bg-slate-50 rounded">
-            <div class="small muted">Total Buffer (Gallons)</div>
-            <div id="total-buffer-gallons" class="kpi">0</div>
-          </div>
-          <div class="p-3 bg-slate-50 rounded">
-            <div class="small muted">Months below SOS (15 days)</div>
-            <div id="months-below-sos" class="kpi">0</div>
-          </div>
-          <div class="p-3 bg-slate-50 rounded">
-            <div class="small muted">Peak POB month</div>
-            <div id="peak-month" class="kpi">-</div>
-          </div>
+    <div class="mt-4 pt-3 border-t">
+      <h4 class="font-medium">Key KPIs</h4>
+      <div class="grid grid-cols-2 gap-2 mt-2">
+        <div class="p-3 bg-slate-50 rounded">
+          <div class="small muted">Total Containers</div>
+          <div id="total-cont-all" class="kpi">0</div>
+        </div>
+        <div class="p-3 bg-slate-50 rounded">
+          <div class="small muted">Total Buffer (Gallons)</div>
+          <div id="total-buffer-gallons" class="kpi">0</div>
+        </div>
+        <div class="p-3 bg-slate-50 rounded">
+          <div class="small muted">Months Below SOS (15 Days)</div>
+          <div id="months-below-sos" class="kpi">0</div>
+        </div>
+        <div class="p-3 bg-slate-50 rounded">
+          <div class="small muted">Peak POB Month</div>
+          <div id="peak-month" class="kpi">-</div>
         </div>
       </div>
-
     </div>
 
   </div>
+
 </div>
+</div> <!-- end outer -->
 
 <script>
-/* ========== Editable Table + Calculation + Professional Analysis ========== */
 
-const CONTAINER_EL = document.getElementById('container-cap');
-const LITRES_EL = document.getElementById('litres-per-gallon');
-const DEFAULT_BUFFER_EL = document.getElementById('default-buffer-days');
+/* Utility: Format number readable */
+function fmt(n){ return Number(n).toLocaleString(); }
 
+/* Calculate days in month YYYY-MM */
+function getDaysInMonth(yyyy_mm){
+    const [year, month] = yyyy_mm.split("-").map(Number);
+    return new Date(year, month, 0).getDate();
+}
+
+/* Global charts */
 let chartContainers = null;
 let chartBuffer = null;
 
-function fmt(n){ return Number(n).toLocaleString(); }
-function round1(n){ return Math.round(n*10)/10; }
-
-/* Sample data based on your screenshot */
+/* SAMPLE DATA */
 const sampleMonths = [
-  ['Nov-25',312,15,3],
-  ['Dec-25',1352,15,3],
-  ['Jan-26',1759,15,3],
-  ['Feb-26',1779,15,3],
-  ['Mar-26',1842,15,3],
-  ['Apr-26',1915,15,3],
-  ['May-26',1994,15,3],
-  ['Jun-26',2089,15,3],
-  ['Jul-26',2104,15,3],
-  ['Aug-26',2188,15,3],
-  ['Sep-26',2536,15,3],
-  ['Oct-26',2800,15,3],
-  ['Nov-26',3473,15,3],
-  ['Dec-26',3902,15,3]
+  ['2025-10', 312, 3],
+  ['2025-11', 1352, 3],
+  ['2025-12', 1759, 3],
+  ['2026-01', 1779, 3],
+  ['2026-02', 1842, 3],
+  ['2026-03', 1915, 3],
+  ['2026-04', 1994, 3],
+  ['2026-05', 2089, 3],
+  ['2026-06', 2104, 3],
+  ['2026-07', 2188, 3],
+  ['2026-08', 2536, 3],
+  ['2026-09', 2800, 3],
+  ['2026-10', 3473, 3],
+  ['2026-11', 3902, 3]
 ];
 
-function createRow(month='Month', pob=0, days=30, rate=3, bufferDays=null){
-  const tbody = document.getElementById('sheet-body');
-  if (bufferDays===null) bufferDays = Number(DEFAULT_BUFFER_EL.value);
-
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input type="text" class="month" value="${month}"></td>
-    <td><input type="number" class="pob" value="${pob}"></td>
-    <td><input type="number" class="days" value="${days}"></td>
-    <td><input type="number" class="rate" value="${rate}"></td>
-    <td class="litres small text-right">0</td>
-    <td class="gallons small text-right">0</td>
-    <td><input type="number" class="buffer-days" value="${bufferDays}"></td>
-    <td class="buffer-gallons small text-right">0</td>
-    <td class="containers small text-right">0</td>
-    <td><button class="remove small px-2 py-1 bg-red-50 text-red-700 rounded">Del</button></td>
-  `;
-  tbody.appendChild(tr);
-
-  tr.querySelectorAll("input").forEach(e => e.addEventListener("input", calculateAll));
-  tr.querySelector(".remove").onclick = () => { tr.remove(); calculateAll(); };
-
-  calculateAll();
-}
-
-function loadSample(){
-  document.getElementById('sheet-body').innerHTML="";
-  sampleMonths.forEach(r => createRow(r[0], r[1], r[2], r[3]));
-}
-
-function calculateAll(){
-  const rows = [...document.querySelectorAll('#sheet-body tr')];
-
-  const litresPerGallon = Number(LITRES_EL.value) || 19;
-  const containerCap = Number(CONTAINER_EL.value) || 600;
-
-  const labels = [], contData=[], bufData=[];
-
-  // KPIs
-  let totalContainers = 0, totalBufferGallons = 0, monthsBelowSOS = 0;
-  const SOS_DAYS = 15;
-
-  rows.forEach(tr=>{
-    const month = tr.querySelector('.month').value;
-    const pob = Number(tr.querySelector('.pob').value);
-    const days = Number(tr.querySelector('.days').value);
-    const rate = Number(tr.querySelector('.rate').value);
-    const bufferDays = Number(tr.querySelector('.buffer-days').value);
-
-    // Calculations
-    const totalLitres = pob * days * rate;
-    const totalGallons = totalLitres / litresPerGallon;
-
-    // Buffer is calculated as (daily demand * bufferDays)
-    const dailyLitres = pob * rate;
-    const bufferLitres = dailyLitres * bufferDays;
-    const bufferGallons = bufferLitres / litresPerGallon;
-
-    // Containers required to hold the buffer (round up)
-    const containers = Math.ceil(bufferGallons / containerCap);
-
-    // Update row
-    tr.querySelector('.litres').textContent = fmt(Math.round(totalLitres));
-    tr.querySelector('.gallons').textContent = fmt(Math.round(totalGallons));
-    tr.querySelector('.buffer-gallons').textContent = fmt(Math.round(bufferGallons));
-    tr.querySelector('.containers').textContent = fmt(containers);
-
-    // KPIs accumulation
-    totalContainers += containers;
-    totalBufferGallons += bufferGallons;
-    if ((totalGallons / (dailyLitres / litresPerGallon)) < SOS_DAYS) { // if stock covers less than SOS days
-      monthsBelowSOS += 1;
+/* CREATE A ROW */
+function createRow(month='2025-10', pob=0, rate=3, bufferDays=null){
+    const tbody = document.getElementById('sheet-body');
+    if(bufferDays===null){
+        bufferDays = Number(document.getElementById('default-buffer-days').value);
     }
 
-    labels.push(month);
-    contData.push(containers);
-    bufData.push(Math.round(bufferGallons));
-  });
+    const tr = document.createElement('tr');
 
-  // Update KPI boxes
-  document.getElementById('total-cont-all').textContent = fmt(totalContainers);
-  document.getElementById('total-buffer-gallons').textContent = fmt(Math.round(totalBufferGallons));
-  document.getElementById('months-below-sos').textContent = fmt(monthsBelowSOS);
+    tr.innerHTML = `
+      <td>
+        <input type="month" class="month"
+               min="2025-10" max="2030-12"
+               value="${month}">
+      </td>
 
-  // Find peak month and max container month
-  let peakPOB = -1, peakMonth='-';
-  let maxCont = -1, maxContMonth='-';
-  rows.forEach(tr=>{
-    const pob = Number(tr.querySelector('.pob').value);
-    const month = tr.querySelector('.month').value;
-    const cont = Number(tr.querySelector('.containers').textContent.replace(/,/g,''));
-    if (pob > peakPOB){ peakPOB = pob; peakMonth = month; }
-    if (cont > maxCont){ maxCont = cont; maxContMonth = month; }
-  });
+      <td><input type="number" class="pob" value="${pob}"></td>
 
-  document.getElementById('peak-month').textContent = `${peakMonth} (${fmt(peakPOB)})`;
+      <td class="days-display small text-right">0</td>
+      <input type="hidden" class="days" value="0">
 
-  // Charts
-  renderCharts(labels, contData, bufData);
+      <td><input type="number" class="rate" value="${rate}"></td>
 
-  // Professional analysis
-  generateProfessionalAnalysis({
-    rows,
-    totalContainers,
-    totalBufferGallons,
-    monthsBelowSOS,
-    peakMonth,
-    peakPOB,
-    maxCont,
-    maxContMonth,
-    SOS_DAYS
-  });
+      <td class="litres small text-right">0</td>
+      <td class="gallons small text-right">0</td>
+
+      <td><input type="number" class="buffer-days" value="${bufferDays}"></td>
+
+      <td class="buffer-gallons small text-right">0</td>
+      <td class="containers small text-right">0</td>
+
+      <td>
+        <button class="remove px-2 py-1 bg-red-50 text-red-700 rounded small">Del</button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+
+    /* Month auto-days listener */
+    tr.querySelector('.month').addEventListener('input', function(){
+        if(this.value){
+            const days = getDaysInMonth(this.value);
+            tr.querySelector('.days-display').textContent = days;
+            tr.querySelector('.days').value = days;
+            calculateAll();
+        }
+    });
+
+    /* Other inputs auto-calc */
+    tr.querySelectorAll("input").forEach(inp=>{
+        inp.addEventListener("input", calculateAll);
+    });
+
+    /* Delete row */
+    tr.querySelector('.remove').onclick = () => {
+        tr.remove();
+        calculateAll();
+    };
+
+    /* Initial days auto-set */
+    if(month){
+        const days = getDaysInMonth(month);
+        tr.querySelector('.days-display').textContent = days;
+        tr.querySelector('.days').value = days;
+    }
+
+    calculateAll();
 }
 
-function renderCharts(labels, contData, bufData){
-  const c1 = document.getElementById('containersChart').getContext('2d');
-  const c2 = document.getElementById('bufferChart').getContext('2d');
+/* LOAD SAMPLE */
+function loadSample(){
+    document.getElementById('sheet-body').innerHTML = "";
+    sampleMonths.forEach(m=>{
+        createRow(m[0], m[1], m[2]);
+    });
+}
 
+/* MAIN CALCULATION */
+function calculateAll(){
+    const rows = [...document.querySelectorAll('#sheet-body tr')];
+
+    const litresPerGallon = Number(document.getElementById('litres-per-gallon').value);
+    const containerCap = Number(document.getElementById('container-cap').value);
+
+    const labels = [], contData = [], bufData = [];
+    let totalContainers = 0, totalBufferGallons = 0, monthsBelowSOS = 0;
+
+    let peakPOB = -1, peakMonth = "-";
+    let maxCont = -1, maxContMonth = "-";
+
+    rows.forEach(tr=>{
+        const month = tr.querySelector('.month').value;
+        const pob = Number(tr.querySelector('.pob').value);
+        const days = Number(tr.querySelector('.days').value);
+        const rate = Number(tr.querySelector('.rate').value);
+        const bufferDays = Number(tr.querySelector('.buffer-days').value);
+
+        const totalLitres = pob * days * rate;
+        const totalGallons = totalLitres / litresPerGallon;
+
+        const dailyLitres = pob * rate;
+        const bufferLitres = dailyLitres * bufferDays;
+        const bufferGallons = bufferLitres / litresPerGallon;
+
+        const containers = Math.ceil(bufferGallons / containerCap);
+
+        tr.querySelector('.litres').textContent = fmt(Math.round(totalLitres));
+        tr.querySelector('.gallons').textContent = fmt(Math.round(totalGallons));
+        tr.querySelector('.buffer-gallons').textContent = fmt(Math.round(bufferGallons));
+        tr.querySelector('.containers').textContent = fmt(containers);
+
+        totalContainers += containers;
+        totalBufferGallons += bufferGallons;
+
+        /* SOS FIXED — If buffer < 15 days → Risk */
+        if(bufferDays < 15){
+            monthsBelowSOS++;
+        }
+
+        if(pob > peakPOB){ peakPOB = pob; peakMonth = month; }
+        if(containers > maxCont){ maxCont = containers; maxContMonth = month; }
+
+        labels.push(month);
+        contData.push(containers);
+        bufData.push(bufferGallons);
+    });
+
+    document.getElementById('total-cont-all').textContent = fmt(totalContainers);
+    document.getElementById('total-buffer-gallons').textContent = fmt(Math.round(totalBufferGallons));
+    document.getElementById('months-below-sos').textContent = fmt(monthsBelowSOS);
+    document.getElementById('peak-month').textContent = `${peakMonth} (${fmt(peakPOB)})`;
+
+    renderCharts(labels, contData, bufData);
+    generateProfessionalAnalysis({
+        totalContainers, totalBufferGallons,
+        monthsBelowSOS, peakMonth, peakPOB,
+        maxCont, maxContMonth
+    });
+}
+
+/* ========== PART 3/3 ========== Continued JS -> Charts, Analysis, Exports, Init ========== */
+
+/* Render Charts (defined here to keep file order logical) */
+function renderCharts(labels, contData, bufData){
   if(chartContainers) chartContainers.destroy();
   if(chartBuffer) chartBuffer.destroy();
 
-  chartContainers = new Chart(c1,{
-    type:"bar",
-    data:{ labels, datasets:[{ label:'Containers', data:contData, backgroundColor:"rgba(34,197,94,0.9)" }] },
-    options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+  const ctx1 = document.getElementById('containersChart').getContext('2d');
+  const ctx2 = document.getElementById('bufferChart').getContext('2d');
+
+  chartContainers = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Containers (per buffer)',
+        data: contData,
+        backgroundColor: 'rgba(34,197,94,0.9)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
   });
 
-  chartBuffer = new Chart(c2,{
-    type:"line",
-    data:{ labels, datasets:[{ label:'Buffer (Gallons)', data:bufData, borderColor:"#0ea5e9", fill:true, tension:0.3 }] },
-    options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+  chartBuffer = new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Buffer (Gallons)',
+        data: bufData.map(v => Math.round(v)),
+        borderColor: '#0ea5e9',
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
   });
 }
 
-/* ========== PROFESSIONAL/CLIENT-FACING ANALYSIS ========== */
-function generateProfessionalAnalysis(data){
-  const { rows, totalContainers, totalBufferGallons, monthsBelowSOS, peakMonth, peakPOB, maxCont, maxContMonth, SOS_DAYS } = data;
-  // Build concise, bilingual-ready (EN) executive summary
-  const execTitle = `<div class="mb-1"><span class="chip">Executive Summary</span></div>`;
-  let execText = `<p><strong>Summary:</strong> The current plan shows a total buffer requirement of approximately <strong>${fmt(Math.round(totalBufferGallons))} gallons</strong> across the forecast months, requiring <strong>${fmt(totalContainers)}</strong> containers (capacity: ${fmt(Number(CONTAINER_EL.value))} gal each). Peak population month is <strong>${peakMonth}</strong>. </p>`;
+/* Professional Analysis (client-ready) */
+function generateProfessionalAnalysis(d){
+  const { totalContainers, totalBufferGallons, monthsBelowSOS, peakMonth, peakPOB, maxCont, maxContMonth } = d;
 
-  // Key findings
-  let findings = `<h4 class="mt-2">Key Findings</h4><ul class="list-disc pl-5 small">`;
-  findings += `<li>Total buffer (all months): <strong>${fmt(Math.round(totalBufferGallons))} gallons</strong>.</li>`;
-  findings += `<li>Total containers required (sum of monthly buffers): <strong>${fmt(totalContainers)}</strong>.</li>`;
-  findings += `<li>Months at risk (below SOS ${SOS_DAYS} days): <strong>${fmt(monthsBelowSOS)}</strong>. These months require urgent attention to avoid stockout.</li>`;
-  findings += `<li>Highest container demand: ${maxContMonth} — <strong>${fmt(maxCont)}</strong> containers.</li>`;
-  findings += `</ul>`;
+  const html = `
+    <div class="chip mb-2">Executive Summary</div>
+    <p>The forecast requires a total buffer of <strong>${fmt(Math.round(totalBufferGallons))} gallons</strong>, corresponding to <strong>${fmt(totalContainers)}</strong> containers (container capacity: ${fmt(Number(document.getElementById('container-cap').value))} gal).</p>
 
-  // Short risk matrix (simple)
-  let risk = `<h4 class="mt-2">Risk Assessment (high level)</h4>`;
-  risk += `<table class="small-table" style="width:100%;border-collapse:collapse;margin-top:6px;">
-    <thead><tr><th style="background:#f8fafc">Risk</th><th style="background:#f8fafc">Impact</th><th style="background:#f8fafc">Mitigation</th></tr></thead><tbody>
-    <tr><td>Stockout (months below SOS)</td><td>High</td><td>Advance shipment / emergency top-up (hold separate SOS stock)</td></tr>
-    <tr><td>Logistics bottleneck (many containers same month)</td><td>Medium-High</td><td>Stagger shipments; use temporary storage; increase shipping frequency</td></tr>
-    <tr><td>Overstock (excess buffer)</td><td>Medium</td><td>Reduce buffer days for low-POB months; use just-in-time for predictable months</td></tr>
-    </tbody></table>`;
+    <h4 class="mt-3 font-semibold">Key Findings</h4>
+    <ul class="list-disc pl-5 small">
+      <li>Total containers required: <strong>${fmt(totalContainers)}</strong>.</li>
+      <li>Total buffer (gallons): <strong>${fmt(Math.round(totalBufferGallons))}</strong>.</li>
+      <li>Months below SOS (15 days): <strong>${fmt(monthsBelowSOS)}</strong> — immediate attention needed for these months.</li>
+      <li>Peak POB month: <strong>${peakMonth}</strong> with <strong>${fmt(peakPOB)}</strong> persons.</li>
+      <li>Highest monthly container demand: <strong>${maxContMonth}</strong> — ${fmt(maxCont)} containers.</li>
+    </ul>
 
-  // Actionable recommendations (prioritized)
-  let rec = `<h4 class="mt-2">Recommendations — Priority & Action Plan</h4>`;
-  rec += `<ol class="pl-5 small">
-    <li><strong>Immediate (0–14 days):</strong> Identify months below SOS and arrange emergency top-up shipments. Maintain a dedicated 15-day SOS reserve separate from buffer stock.</li>
-    <li><strong>Near term (2–6 weeks):</strong> For months where containers ≥ 20, plan bi-weekly shipments or secure additional temporary tank storage to avoid single-point delivery stress.</li>
-    <li><strong>Operational (1–3 months):</strong> Implement a rolling 60-day buffer for peak season months only; reduce to 15–30 days for off-peak to lower logistics cost.</li>
-    <li><strong>Process:</strong> Cross-check POB mobilization schedules with HR/Logistics two weeks before each month to confirm assumptions and avoid over/under procurement.</li>
-  </ol>`;
+    <h4 class="mt-3 font-semibold">Risk & Mitigation</h4>
+    <table class="small-table" style="width:100%;border-collapse:collapse;">
+      <tr><th style="background:#f8fafc">Risk</th><th style="background:#f8fafc">Impact</th><th style="background:#f8fafc">Mitigation</th></tr>
+      <tr><td>Months below SOS</td><td>High</td><td>Immediate top-up shipments and hold a dedicated 15-day SOS reserve on-site.</td></tr>
+      <tr><td>High monthly container concentration</td><td>Medium</td><td>Stagger shipments, use temporary storage, or increase shipment frequency.</td></tr>
+      <tr><td>Overstock</td><td>Medium</td><td>Reduce buffer days for predictable low months and apply JIT for stable months.</td></tr>
+    </table>
 
-  // KPI snapshot
-  let kpi = `<h4 class="mt-2">KPI Snapshot</h4>`;
-  kpi += `<table class="small-table" style="width:100%;border-collapse:collapse;margin-top:6px;">
-    <tr><td style="width:55%"><strong>Peak POB month</strong></td><td>${peakMonth} (${fmt(peakPOB)})</td></tr>
-    <tr><td><strong>Highest container demand (single month)</strong></td><td>${maxContMonth} — ${fmt(maxCont)} containers</td></tr>
-    <tr><td><strong>Months below SOS (${SOS_DAYS} days)</strong></td><td>${fmt(monthsBelowSOS)}</td></tr>
-    <tr><td><strong>Total buffer (gallons)</strong></td><td>${fmt(Math.round(totalBufferGallons))}</td></tr>
-  </table>`;
+    <h4 class="mt-3 font-semibold">Recommendations (Priority)</h4>
+    <ol class="pl-5 small">
+      <li><strong>Immediate (0–14 days):</strong> For months below SOS, schedule emergency shipments and confirm POB numbers.</li>
+      <li><strong>Short term (2–6 weeks):</strong> For months where containers ≥ 20, implement bi-weekly or weekly shipments.</li>
+      <li><strong>Operational (1–3 months):</strong> Adopt a rolling buffer policy: 60 days for peak months, 15–30 for off-peak.</li>
+      <li><strong>Process:</strong> Monthly cross-check between HR & Logistics to validate mobilization.</li>
+    </ol>
 
-  // Recommended shipping cadence example (simple heuristic)
-  let cadence = `<h4 class="mt-2">Suggested Shipping Cadence (example)</h4>`;
-  cadence += `<ul class="pl-5 small">
-    <li>Containers per month ≤ 8: monthly shipment</li>
-    <li>Containers per month 9–20: bi-monthly (every 2 weeks)</li>
-    <li>Containers per month >20: weekly shipments or temporary additional storage</li>
-  </ul>`;
+    <p class="mt-2"><strong>Note:</strong> Analysis is based on the current input table. For formal reporting, the PDF export includes both table and summary; logos and signature blocks can be added on request.</p>
+  `;
 
-  // Closing note (client-ready)
-  let note = `<p class="mt-2"><strong>Note:</strong> These recommendations are derived from the current forecast. Please validate final POB mobilization dates and confirm procurement lead times (recommended minimum 14 days for overseas shipments). For BP/JGC reporting, we can produce a PDF summary with header/logo and an appendix of monthly tables.</p>`;
-
-  // Assemble final HTML
-  const html = execTitle + execText + findings + risk + rec + kpi + cadence + note;
   document.getElementById('analysis').innerHTML = html;
 }
 
-/* ========== EXPORTS (CSV / XLSX / PDF) ========== */
-
-/* Export CSV */
-document.getElementById('download-csv').onclick = () => {
+/* Export: CSV */
+document.getElementById('download-csv').addEventListener('click', () => {
   let csv = "Month,POB,Days,Rate,Total(L),Gallons,BufferDays,BufferGallons,Containers\n";
+  document.querySelectorAll('#sheet-body tr').forEach(tr => {
+    const month = tr.querySelector('.month').value;
+    const pob = tr.querySelector('.pob').value;
+    const days = tr.querySelector('.days').value;
+    const rate = tr.querySelector('.rate').value;
+    const litres = tr.querySelector('.litres').textContent.replace(/,/g,'');
+    const gallons = tr.querySelector('.gallons').textContent.replace(/,/g,'');
+    const bufferDays = tr.querySelector('.buffer-days').value;
+    const bufferGallons = tr.querySelector('.buffer-gallons').textContent.replace(/,/g,'');
+    const containers = tr.querySelector('.containers').textContent.replace(/,/g,'');
 
-  document.querySelectorAll('#sheet-body tr').forEach(tr=>{
-    const c = [
-      tr.querySelector('.month').value,
-      tr.querySelector('.pob').value,
-      tr.querySelector('.days').value,
-      tr.querySelector('.rate').value,
-      tr.querySelector('.litres').textContent,
-      tr.querySelector('.gallons').textContent,
-      tr.querySelector('.buffer-days').value,
-      tr.querySelector('.buffer-gallons').textContent,
-      tr.querySelector('.containers').textContent
-    ];
-    csv += c.join(",") + "\n";
+    csv += [month,pob,days,rate,litres,gallons,bufferDays,bufferGallons,containers].join(",") + "\n";
   });
 
-  const blob = new Blob([csv],{type:"text/csv"});
+  const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = "Water_Provision.csv";
+  a.download = 'Water_Provision.csv';
   a.click();
-};
+});
 
-/* Export Excel */
-document.getElementById('download-excel').onclick = () => {
+/* Export: Excel (SheetJS) */
+document.getElementById('download-excel').addEventListener('click', () => {
   const rows = [["Month","POB","Days","Rate","Total(L)","Gallons","BufferDays","BufferGallons","Containers"]];
-
-  document.querySelectorAll('#sheet-body tr').forEach(tr=>{
+  document.querySelectorAll('#sheet-body tr').forEach(tr => {
     rows.push([
       tr.querySelector('.month').value,
       tr.querySelector('.pob').value,
@@ -420,22 +447,28 @@ document.getElementById('download-excel').onclick = () => {
   const ws = XLSX.utils.aoa_to_sheet(rows);
   XLSX.utils.book_append_sheet(wb, ws, "Water Provision");
   XLSX.writeFile(wb, "Water_Provision.xlsx");
-};
+});
 
-/* Export PDF (includes executive summary + table) */
-document.getElementById('download-pdf').onclick = async () => {
+/* Export: PDF (jsPDF + autoTable) */
+document.getElementById('download-pdf').addEventListener('click', () => {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({orientation:"landscape"});
+  const doc = new jsPDF({ orientation: 'landscape' });
+
   // Header
   doc.setFontSize(14);
   doc.text("Water Provision — Forecast & Buffer Planning", 14, 15);
   doc.setFontSize(10);
   doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
 
-  // Build table data
-  const data = [];
-  document.querySelectorAll('#sheet-body tr').forEach(tr=>{
-    data.push([
+  // Executive summary text (brief)
+  const execText = document.getElementById('analysis').innerText;
+  doc.setFontSize(9);
+  doc.text(execText, 14, 30, { maxWidth: 260 });
+
+  // Table
+  const body = [];
+  document.querySelectorAll('#sheet-body tr').forEach(tr => {
+    body.push([
       tr.querySelector('.month').value,
       tr.querySelector('.pob').value,
       tr.querySelector('.days').value,
@@ -448,36 +481,47 @@ document.getElementById('download-pdf').onclick = async () => {
     ]);
   });
 
-  // Add executive summary as text (first page)
-  const execHtml = document.getElementById('analysis').innerText.split('\n').slice(0,20).join('\n'); // brief excerpt
-  doc.setFontSize(10);
-  doc.text(execHtml, 14, 30, { maxWidth: 270 });
-
-  // Table with autopage
   doc.autoTable({
-    startY: 80,
+    startY: 90,
     head: [["Month","POB","Days","Rate","Total(L)","Gallons","BufferDays","BufferGallons","Containers"]],
-    body: data,
+    body: body,
     styles: { fontSize: 8 },
     headStyles: { fillColor: [22, 160, 133] },
     theme: 'grid'
   });
 
-  doc.save("Water_Provision_Report.pdf");
-};
+  doc.save('Water_Provision_Report.pdf');
+});
 
-/* ========== UI wiring ========== */
-document.getElementById('add-row').onclick = ()=>createRow();
-document.getElementById('reset-sample').onclick = ()=>loadSample();
-document.getElementById('clear-table').onclick = ()=>{ document.getElementById('sheet-body').innerHTML=""; calculateAll(); };
-document.getElementById('apply-buffer-all').onclick = ()=>{
-  const v = Number(DEFAULT_BUFFER_EL.value) || 30;
-  document.querySelectorAll('.buffer-days').forEach(i=>i.value=v);
+/* UI Buttons wiring */
+document.getElementById('add-row').addEventListener('click', () => {
+  // default new row month = next month if possible, else 2025-10
+  const now = new Date();
+  let yyyy = now.getFullYear();
+  let mm = now.getMonth() + 1;
+  mm = mm < 10 ? '0' + mm : '' + mm;
+  const suggested = `${yyyy}-${mm}`;
+  // ensure in allowed range otherwise fallback
+  const min = '2025-10', max = '2030-12';
+  const defaultMonth = (suggested >= min && suggested <= max) ? suggested : '2025-10';
+  createRow(defaultMonth, 0, 3);
+});
+
+document.getElementById('reset-sample').addEventListener('click', () => loadSample());
+document.getElementById('clear-table').addEventListener('click', () => { document.getElementById('sheet-body').innerHTML = ""; calculateAll(); });
+
+document.getElementById('apply-buffer-all').addEventListener('click', () => {
+  const v = Number(document.getElementById('default-buffer-days').value) || 30;
+  document.querySelectorAll('.buffer-days').forEach(i => i.value = v);
   calculateAll();
-};
+});
 
+/* Initialize with sample */
 loadSample();
+calculateAll();
+
+/* ========== END OF FILE ========== */
 </script>
+
 </body>
 </html>
-
