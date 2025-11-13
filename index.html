@@ -1,500 +1,409 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consumption and Stock Planning Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for advanced charts and visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-    <style>
-        /* Custom font for better readability */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f1f5f9; /* light slate */
-        }
-        .container-card {
-            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Water Provision — Editable Sheet & Analysis</title>
+
+<!-- Tailwind (cdn) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<style>
+  body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f3f6f9; }
+  table td, table th { padding: 6px 8px; border: 1px solid rgba(15,23,42,0.06); }
+  td input[type="number"], td select { width:100%; box-sizing:border-box; padding:6px; border-radius:6px; border:1px solid #cbd5e1; }
+  .sticky-head th { position: sticky; top:0; background:white; z-index:2; }
+  .small { font-size:0.85rem; color:#475569; }
+  .muted { color:#6b7280; }
+  .table-wrap { max-height:420px; overflow:auto; border-radius:8px; box-shadow:0 6px 18px rgba(2,6,23,0.04); }
+</style>
 </head>
-<body class="p-4 sm:p-8">
+<body class="p-6">
 
-    <div class="max-w-7xl mx-auto bg-white rounded-xl container-card p-6 sm:p-10">
-        
-        <!-- Language Selector -->
-        <div class="flex justify-end mb-6">
-            <select id="language-selector" onchange="setLanguage(this.value)"
-                    class="p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-blue-500 focus:border-blue-500">
-                <option value="en">English</option>
-                <option value="hi">हिन्दी (Hindi)</option>
-            </select>
-        </div>
+<div class="max-w-7xl mx-auto">
 
-        <!-- Header -->
-        <header class="text-center mb-10">
-            <h1 id="app-title" class="text-3xl sm:text-4xl font-extrabold text-teal-700">Consumption and Stock Planning Dashboard</h1>
-            <p id="subtitle" class="text-gray-600 mt-2 text-lg">Daily Usage, Future Projections, and Stock Optimization</p>
-        </header>
-
-        <!-- Input Section: Planning & Stock Parameters -->
-        <div class="mb-10 p-6 bg-teal-50 rounded-lg border border-teal-200 grid grid-cols-1 md:grid-cols-4 gap-6">
-            
-            <!-- Total Residents Input -->
-            <div>
-                <label for="residents" id="residents-label" class="block text-sm font-medium text-teal-700 mb-1">
-                    Total Residents
-                </label>
-                <input type="number" id="residents" placeholder="e.g., 500" min="0" value="500"
-                       class="w-full p-2 border-2 border-teal-400 rounded-lg text-base focus:border-teal-600 focus:ring-teal-600 transition duration-150"
-                       oninput="calculateUsage()">
-            </div>
-
-            <!-- Daily Usage Per Person Input (Still in Litres, as consumption is usually measured in smaller units) -->
-            <div>
-                <label for="daily-usage" id="usage-input-label" class="block text-sm font-medium text-teal-700 mb-1">
-                    Daily Usage Per Person (Litres)
-                </label>
-                <input type="number" id="daily-usage" placeholder="e.g., 4" min="0" value="4"
-                       class="w-full p-2 border-2 border-teal-400 rounded-lg text-base focus:border-teal-600 focus:ring-teal-600 transition duration-150"
-                       oninput="calculateUsage()">
-            </div>
-            
-            <!-- Current Stock Input (Inventory) - CONVERTED TO GALLONS -->
-            <div>
-                <label for="current-stock" id="stock-input-label" class="block text-sm font-medium text-teal-700 mb-1">
-                    Current Stock (Gallons)
-                </label>
-                <input type="number" id="current-stock" placeholder="e.g., 5263" min="0" value="5263"
-                       class="w-full p-2 border-2 border-teal-400 rounded-lg text-base focus:border-teal-600 focus:ring-teal-600 transition duration-150"
-                       oninput="calculateUsage()">
-            </div>
-            
-            <!-- Target Buffer Days Input (Optimization Goal) -->
-            <div>
-                <label for="buffer-days" id="buffer-days-label" class="block text-sm font-medium text-teal-700 mb-1">
-                    Target Buffer Days
-                </label>
-                <input type="number" id="buffer-days" placeholder="e.g., 60" min="0" value="60"
-                       class="w-full p-2 border-2 border-teal-400 rounded-lg text-base focus:border-teal-600 focus:ring-teal-600 transition duration-150"
-                       oninput="calculateUsage()">
-            </div>
-        </div>
-        
-        <!-- Results and Analytics Section -->
-        <div id="results-container" class="mt-8 hidden">
-            
-            <h2 id="chart-header" class="text-2xl font-bold text-gray-800 mb-6">Usage Trends & Stock Projection (Next 30 Days)</h2>
-            
-            <!-- Chart Area -->
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-10 shadow-lg">
-                <canvas id="usageChart"></canvas>
-            </div>
-
-            <!-- Key Metrics: SOS, Stock Days, Optimization -->
-            <h2 id="metrics-header" class="text-2xl font-bold text-gray-800 mb-6">Key Planning & Optimization Metrics</h2>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                
-                <!-- 1. SOS Requirement (15 Days) - DISPLAY IN GALLONS & CONTAINERS -->
-                <div class="p-4 rounded-xl bg-red-100 border-2 border-red-400 text-center shadow-md">
-                    <p id="sos-header" class="text-sm font-semibold text-red-800 uppercase">SOS (15 DAYS MINIMUM) STORAGE</p>
-                    <p id="sos-gallons" class="text-3xl font-extrabold text-red-900 mt-1">0</p>
-                    <p id="sos-containers" class="text-sm text-red-700"><span id="sos-containers-count">0</span> Containers (600 Gallons each)</p>
-                </div>
-                
-                <!-- 2. Target Buffer Stock (For Optimization) - DISPLAY IN GALLONS & CONTAINERS -->
-                <div class="p-4 rounded-xl bg-teal-100 border-2 border-teal-400 text-center shadow-md">
-                    <p id="buffer-header" class="text-sm font-semibold text-teal-800 uppercase">TARGET <span id="buffer-days-display">60</span> DAY BUFFER STOCK</p>
-                    <p id="buffer-gallons" class="text-3xl font-extrabold text-teal-900 mt-1">0</p>
-                    <p id="buffer-containers" class="text-sm text-teal-700"><span id="buffer-containers-count">0</span> Containers (600 Gallons each)</p>
-                </div>
-                
-                <!-- 3. Current Stock Days Remaining -->
-                <div class="p-4 rounded-xl bg-indigo-100 border-2 border-indigo-400 text-center shadow-md">
-                    <p id="days-left-header" class="text-sm font-semibold text-indigo-800 uppercase">CURRENT STOCK DAYS REMAINING</p>
-                    <p id="days-left" class="text-3xl font-extrabold text-indigo-900 mt-1">0</p>
-                    <p id="days-left-note" class="text-sm text-indigo-700">Days (Based on Average Usage)</p>
-                </div>
-
-                <!-- 4. Stock Maintenance Status -->
-                <div id="stock-status-card" class="p-4 rounded-xl text-center shadow-lg">
-                    <p id="status-label" class="text-sm font-semibold uppercase">STOCK STATUS</p>
-                    <p id="status-message" class="text-2xl font-extrabold mt-2">OPTIMAL</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Error/Initial Message -->
-        <div id="initial-message" class="text-center text-gray-500 mt-10 p-4 bg-gray-100 rounded-lg">
-            <span id="initial-message-text">Enter the number of residents, daily usage, and current stock to view the dashboard analysis.</span>
-        </div>
-
+  <header class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800">Water Provision — Editable Sheet & Analysis</h1>
+      <p class="small mt-1">Fill the Forecast POB & other fields — sheet auto-calculates totals, containers, buffer and shows charts & deep analysis.</p>
     </div>
 
-    <script>
-        // --- Constants ---
-        const CONT_GALLONS = 600; // Container capacity in Gallons
-        const LITRES_PER_GALLON_FACTOR = 19; // Custom conversion factor (1 Gallon = 19 Litres, based on previous code)
-        const SOS_DAYS = 15;
-        let usageChart = null;
-        let currentLang = 'en';
+    <div class="flex gap-2 items-center">
+      <button id="add-row" class="px-3 py-2 bg-teal-600 text-white rounded">Add Month</button>
+      <button id="reset-sample" class="px-3 py-2 bg-gray-200 rounded small">Load Sample</button>
+      <button id="download-csv" class="px-3 py-2 bg-indigo-600 text-white rounded">Download CSV</button>
+    </div>
+  </header>
 
-        // --- Translations Data ---
-        const translations = {
-            'en': {
-                'app_title': 'Consumption and Stock Planning Dashboard',
-                'subtitle': 'Daily Usage, Future Projections, and Stock Optimization',
-                'residents_label': 'Total Residents',
-                'residents_placeholder': 'e.g., 500',
-                'usage_input_label': 'Daily Usage Per Person (Litres)', // Kept in Litres for user input
-                'usage_input_placeholder': 'e.g., 4',
-                'stock_input_label': 'Current Stock (Gallons)', // CHANGED to GALLONS
-                'stock_input_placeholder': 'e.g., 5263', // Example: 100000 Litres / 19 = 5263 Gallons
-                'buffer_days_label': 'Target Buffer Days',
-                'buffer_days_placeholder': 'e.g., 60',
-                'chart_header': 'Usage Trends & Stock Projection (Next 30 Days)',
-                'metrics_header': 'Key Planning & Optimization Metrics',
-                'sos_header': 'SOS (15 DAYS MINIMUM) STORAGE (GALLONS)', // Added GALLONS
-                'buffer_header': 'TARGET {DAYS} DAY BUFFER STOCK (GALLONS)', // Added GALLONS
-                'days_left_header': 'CURRENT STOCK DAYS REMAINING',
-                'days_left_note': 'Days (Based on Average Usage)',
-                'status_label': 'STOCK STATUS',
-                'status_optimal': 'OPTIMAL',
-                'status_warning': 'WARNING',
-                'status_critical': 'CRITICAL',
-                'chart_usage_title': 'Simulated Daily Usage (Litres)',
-                'chart_stock_title': 'Stock Days Left',
-                'chart_days_label': 'Day',
-                'chart_projection': 'Projected Usage',
-                'chart_sos': 'SOS Level (15 Days)',
-                'initial_msg': 'Enter the number of residents, daily usage, and current stock (in Gallons) to view the dashboard analysis.'
-            },
-            'hi': {
-                'app_title': 'खपत और स्टॉक योजना डैशबोर्ड',
-                'subtitle': 'दैनिक उपयोग, भविष्य के अनुमान और स्टॉक अनुकूलन',
-                'residents_label': 'कुल निवासी',
-                'residents_placeholder': 'उदाहरण: 500',
-                'usage_input_label': 'प्रति व्यक्ति दैनिक उपयोग (लीटर)', // Kept in Litres
-                'usage_input_placeholder': 'उदाहरण: 4',
-                'stock_input_label': 'वर्तमान स्टॉक (गैलन)', // CHANGED to GALLONS
-                'stock_input_placeholder': 'उदाहरण: 5263',
-                'buffer_days_label': 'लक्षित बफर दिन',
-                'buffer_days_placeholder': 'उदाहरण: 60',
-                'chart_header': 'उपयोग रुझान और स्टॉक अनुमान (अगले 30 दिन)',
-                'metrics_header': 'मुख्य योजना और अनुकूलन मेट्रिक्स',
-                'sos_header': 'SOS (15 दिन न्यूनतम) भंडारण (गैलन)', // Added GALLONS
-                'buffer_header': 'लक्षित {DAYS} दिन का बफर स्टॉक (गैलन)', // Added GALLONS
-                'days_left_header': 'शेष वर्तमान स्टॉक दिन',
-                'days_left_note': 'दिन (औसत उपयोग पर आधारित)',
-                'status_label': 'स्टॉक स्थिति',
-                'status_optimal': 'सर्वोत्तम',
-                'status_warning': 'चेतावनी',
-                'status_critical': 'अतिसंवेदनशील',
-                'chart_usage_title': 'सिम्युलेटेड दैनिक उपयोग (लीटर)',
-                'chart_stock_title': 'शेष स्टॉक दिन',
-                'chart_days_label': 'दिन',
-                'chart_projection': 'अनुमानित उपयोग',
-                'chart_sos': 'SOS स्तर (15 दिन)',
-                'initial_msg': 'डैशबोर्ड विश्लेषण देखने के लिए निवासियों की संख्या, दैनिक उपयोग और वर्तमान स्टॉक (गैलन में) दर्ज करें।'
-            }
-        };
+  <!-- Controls -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="p-4 bg-white rounded shadow-sm">
+      <label class="small mut ed">Container capacity (gallons)</label>
+      <input id="container-cap" type="number" value="600" min="1" class="mt-1" />
+    </div>
+    <div class="p-4 bg-white rounded shadow-sm">
+      <label class="small muted">Gallons per 19L (conversion)</label>
+      <input id="litres-per-gallon" type="number" value="19" min="1" class="mt-1" />
+    </div>
+    <div class="p-4 bg-white rounded shadow-sm">
+      <label class="small muted">Target Buffer Days</label>
+      <input id="default-buffer-days" type="number" value="30" min="0" class="mt-1" />
+    </div>
+  </div>
 
-        const elements = {
-            'app-title': document.getElementById('app-title'),
-            'subtitle': document.getElementById('subtitle'),
-            'residents-label': document.getElementById('residents-label'),
-            'usage-input-label': document.getElementById('usage-input-label'),
-            'stock-input-label': document.getElementById('stock-input-label'),
-            'buffer-days-label': document.getElementById('buffer-days-label'),
-            'residents': document.getElementById('residents'),
-            'daily-usage': document.getElementById('daily-usage'),
-            'current-stock': document.getElementById('current-stock'),
-            'buffer-days': document.getElementById('buffer-days'),
-            'chart-header': document.getElementById('chart-header'),
-            'metrics-header': document.getElementById('metrics-header'),
-            'sos-header': document.getElementById('sos-header'),
-            'buffer-header': document.getElementById('buffer-header'),
-            'days-left-header': document.getElementById('days-left-header'),
-            'days-left-note': document.getElementById('days-left-note'),
-            'status-label': document.getElementById('status-label'),
-            'initial-message-text': document.getElementById('initial-message-text'),
-            'buffer-days-display': document.getElementById('buffer-days-display'),
-            'sos-gallons': document.getElementById('sos-gallons'), // New ID for Gallons
-            'buffer-gallons': document.getElementById('buffer-gallons') // New ID for Gallons
-        };
-        
-        const resultsContainer = document.getElementById('results-container');
-        const initialMessage = document.getElementById('initial-message');
-        
-        /**
-         * Utility function to format numbers (e.g., 1,234.56)
-         */
-        function formatNumber(num) {
-            return num.toLocaleString(currentLang, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-        }
+  <!-- Editable Table -->
+  <div class="bg-white rounded-lg p-4 mb-6 container-card">
+    <div class="flex justify-between items-center mb-3">
+      <h2 class="font-semibold">Monthly Sheet</h2>
+      <p class="small muted">Edit Forecast POB / Days / Rate → others auto-calc</p>
+    </div>
 
-        /**
-         * Converts gallons to containers (rounded up)
-         */
-        function gallonsToContainers(gallons) {
-            return Math.ceil(gallons / CONT_GALLONS);
-        }
+    <div class="table-wrap">
+      <table id="sheet-table" class="min-w-full bg-white">
+        <thead class="sticky-head">
+          <tr>
+            <th>Month</th>
+            <th>Forecast POB at Site</th>
+            <th>Days in Month</th>
+            <th>Rate (L/person/day)</th>
+            <th>Total Drinking Water (L)</th>
+            <th>Total Drinking Water (in Gallon 19 L)</th>
+            <th>Total Buffer Stock for <span id="buffer-visible">30</span> Days (L)</th>
+            <th>Total Buffer Stock (in Gallon 19 L)</th>
+            <th>Shipping in Container (600 Gallon per Container)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="sheet-body">
+          <!-- Rows are inserted by JS -->
+        </tbody>
+        <tfoot>
+          <tr class="bg-slate-50">
+            <td class="small font-medium">Totals / Summary</td>
+            <td id="sum-pob" class="small text-right pr-3">0</td>
+            <td id="sum-days" class="small text-right pr-3">0</td>
+            <td></td>
+            <td id="sum-litres" class="small text-right pr-3">0</td>
+            <td id="sum-gallons" class="small text-right pr-3">0</td>
+            <td id="sum-buffer-litres" class="small text-right pr-3">0</td>
+            <td id="sum-buffer-gallons" class="small text-right pr-3">0</td>
+            <td id="sum-containers" class="small text-right pr-3">0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
 
-        /**
-         * Simulates daily consumption with a slight, realistic fluctuation (for better chart visualization)
-         */
-        function generateDailyUsage(baseDailyLitres, days) {
-            const data = [];
-            for (let i = 0; i < days; i++) {
-                // Apply a random fluctuation between -5% and +5%
-                const fluctuation = 1 + (Math.random() * 0.1 - 0.05);
-                data.push(baseDailyLitres * fluctuation);
-            }
-            return data;
-        }
+    <div class="mt-3 flex gap-2">
+      <button id="apply-buffer-all" class="px-3 py-2 bg-emerald-600 text-white rounded small">Apply default buffer to all</button>
+      <button id="clear-table" class="px-3 py-2 bg-red-100 text-red-700 rounded small">Clear table</button>
+    </div>
+  </div>
 
-        /**
-         * Renders the Chart.js visualization.
-         */
-        function renderChart(dailyUsageData, dailyAvgLitres) {
-            const T = translations[currentLang];
-            const ctx = document.getElementById('usageChart').getContext('2d');
-            
-            // Labels for the next 30 days
-            const labels = Array.from({ length: 30 }, (_, i) => `${T.chart_days_label} ${i + 1}`);
+  <!-- Charts & Deep Analysis -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-            // Read stock input as Gallons and convert to Litres for calculation
-            const currentStockGallons = parseFloat(elements['current-stock'].value) || 0;
-            let stockLitres = currentStockGallons * LITRES_PER_GALLON_FACTOR;
-            
-            // Generate Stock Days Left dataset (for the right Y-axis)
-            const stockDaysData = [];
-            
-            for (let i = 0; i < dailyUsageData.length; i++) {
-                stockLitres -= dailyUsageData[i];
-                const daysLeft = stockLitres > 0 ? stockLitres / dailyAvgLitres : 0;
-                stockDaysData.push(daysLeft);
-            }
-            
-            // Find the day when stock drops below 15 days (SOS)
-            const sosDepletionDay = stockDaysData.findIndex(days => days < SOS_DAYS);
+    <div class="bg-white p-4 rounded shadow-sm">
+      <h3 class="font-semibold mb-3">Charts</h3>
+      <canvas id="containersChart" height="220"></canvas>
+      <div class="mt-4">
+        <canvas id="bufferChart" height="180"></canvas>
+      </div>
+    </div>
 
-            // Recreate the chart if it already exists
-            if (usageChart) {
-                usageChart.destroy();
-            }
+    <div class="bg-white p-4 rounded shadow-sm">
+      <h3 class="font-semibold mb-3">Deep Analysis & Recommendations</h3>
+      <div id="analysis" class="text-sm space-y-2 small muted">
+        <!-- Analysis injected here -->
+      </div>
 
-            usageChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: T.chart_projection,
-                            data: dailyUsageData,
-                            borderColor: 'rgb(13, 148, 136)', // Teal 600
-                            backgroundColor: 'rgba(13, 148, 136, 0.1)',
-                            fill: true,
-                            tension: 0.1,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: T.chart_stock_title,
-                            data: stockDaysData,
-                            borderColor: 'rgb(79, 70, 229)', // Indigo 600
-                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                            fill: false,
-                            tension: 0.2,
-                            borderDash: [5, 5],
-                            yAxisID: 'y1'
-                        },
-                        {
-                            label: T.chart_sos,
-                            data: Array(30).fill(SOS_DAYS),
-                            borderColor: 'rgb(220, 38, 38)', // Red 600
-                            backgroundColor: 'transparent',
-                            pointRadius: 0,
-                            borderWidth: 1,
-                            borderDash: [10, 5],
-                            yAxisID: 'y1',
-                            tooltip: { enabled: false }
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: { display: false }
-                    },
-                    scales: {
-                        x: {
-                            title: { display: true, text: T.chart_days_label }
-                        },
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: { display: true, text: T.chart_usage_title, color: 'rgb(13, 148, 136)' },
-                            grid: { drawOnChartArea: false }, // Only draw grid lines for the stock axis
-                            beginAtZero: true
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: { display: true, text: T.chart_stock_title, color: 'rgb(79, 70, 229)' },
-                            min: 0,
-                            ticks: {
-                                callback: function(value) {
-                                    return value + ' Days';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            
-            return sosDepletionDay; // Return the key info on when depletion occurs
-        }
+      <div class="mt-4 pt-3 border-t">
+        <h4 class="font-medium">Quick KPI</h4>
+        <div class="grid grid-cols-2 gap-2 mt-2">
+          <div class="p-3 bg-slate-50 rounded">
+            <div class="small muted">Peak Month (POB)</div>
+            <div id="peak-month" class="font-semibold">-</div>
+          </div>
+          <div class="p-3 bg-slate-50 rounded">
+            <div class="small muted">Month with Max Containers</div>
+            <div id="max-cont-month" class="font-semibold">-</div>
+          </div>
+          <div class="p-3 bg-slate-50 rounded">
+            <div class="small muted">Total Containers (All months)</div>
+            <div id="total-cont-all" class="font-semibold">0</div>
+          </div>
+          <div class="p-3 bg-slate-50 rounded">
+            <div class="small muted">Total Buffer (Gallons)</div>
+            <div id="total-buffer-gallons" class="font-semibold">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        /**
-         * Updates all static text elements based on the selected language.
-         */
-        function setLanguage(langCode) {
-            currentLang = langCode;
-            const T = translations[langCode];
+  </div>
 
-            // Update static elements
-            elements['app-title'].textContent = T.app_title;
-            elements['subtitle'].textContent = T.subtitle;
-            elements['residents-label'].textContent = T.residents_label;
-            elements['usage-input-label'].textContent = T.usage_input_label;
-            elements['stock-input-label'].textContent = T.stock_input_label;
-            elements['buffer-days-label'].textContent = T.buffer_days_label;
-            elements['residents'].placeholder = T.residents_placeholder;
-            elements['daily-usage'].placeholder = T.usage_input_placeholder;
-            elements['current-stock'].placeholder = T.stock_input_placeholder;
-            elements['buffer-days'].placeholder = T.buffer_days_placeholder;
-            elements['chart-header'].textContent = T.chart_header;
-            elements['metrics-header'].textContent = T.metrics_header;
-            elements['days-left-note'].textContent = T.days_left_note;
-            
-            // Re-run calculation to update all dynamic text and chart labels
-            calculateUsage();
-        }
+  <footer class="text-xs text-gray-500 small">
+    Tip: You can edit any numeric cell. Use "Load Sample" to populate the table with your screenshot-like months.
+  </footer>
 
-        /**
-         * Main calculation and rendering function.
-         */
-        function calculateUsage() {
-            const residents = parseFloat(elements['residents'].value) || 0;
-            const dailyUsagePerResident = parseFloat(elements['daily-usage'].value) || 0;
-            // Read Current Stock as Gallons
-            const currentStockGallons = parseFloat(elements['current-stock'].value) || 0;
-            const bufferDays = parseFloat(elements['buffer-days'].value) || 0;
-            const T = translations[currentLang];
+</div>
 
-            const isValid = residents > 0 && dailyUsagePerResident > 0 && currentStockGallons >= 0 && bufferDays >= 0;
+<script>
+/* ===============================
+   Editable sheet + calculations
+   =============================== */
 
-            if (!isValid) {
-                // Hide results and show initial message if input is invalid
-                resultsContainer.classList.add('hidden');
-                initialMessage.classList.remove('hidden');
-                elements['initial-message-text'].textContent = T.initial_msg;
-                return;
-            }
+const CONTAINER_EL = document.getElementById('container-cap');
+const LITRES_PER_GALLON_EL = document.getElementById('litres-per-gallon');
+const DEFAULT_BUFFER_EL = document.getElementById('default-buffer-days');
+const BUFFER_VISIBLE = document.getElementById('buffer-visible');
 
-            // Show results and hide initial message
-            resultsContainer.classList.remove('hidden');
-            initialMessage.classList.add('hidden');
+let chartContainers = null;
+let chartBuffer = null;
 
-            // 1. Core Calculations
-            const dailyAvgLitres = residents * dailyUsagePerResident;
+BUFFER_VISIBLE.textContent = DEFAULT_BUFFER_EL.value;
 
-            // Convert Litre-based daily usage into Gallons
-            const dailyAvgGallons = dailyAvgLitres / LITRES_PER_GALLON_FACTOR;
+// helper formatting
+function fmt(n) { return (isNaN(n) ? 0 : Math.round(n)).toLocaleString(); }
+function fdec(n){ return (isNaN(n) ? 0 : Number(n.toFixed(1))).toLocaleString(); }
 
-            // Calculate Stock Days Remaining (how long current stock will last)
-            const daysLeft = currentStockGallons > 0 ? currentStockGallons / dailyAvgGallons : 0;
-            
-            // Calculate SOS and Buffer Requirements (in Gallons)
-            const sosGallons = dailyAvgGallons * SOS_DAYS;
-            const bufferGallons = dailyAvgGallons * bufferDays;
-            
-            // Round to 1 decimal place for display
-            const daysLeftFormatted = daysLeft.toFixed(1);
+const sampleMonths = [
+  ['Nov-25',312,15,3],
+  ['Dec-25',1352,15,3],
+  ['Jan-26',1759,15,3],
+  ['Feb-26',1779,15,3],
+  ['Mar-26',1842,15,3],
+  ['Apr-26',1915,15,3],
+  ['May-26',1994,15,3],
+  ['Jun-26',2089,15,3],
+  ['Jul-26',2104,15,3],
+  ['Aug-26',2188,15,3],
+  ['Sep-26',2536,15,3],
+  ['Oct-26',2800,15,3],
+  ['Nov-26',3473,15,3],
+  ['Dec-26',3902,15,3]
+];
 
-            // 2. Data Simulation for Chart (in Litres, as usage input is in Litres)
-            const dailyUsageData = generateDailyUsage(dailyAvgLitres, 30);
-            
-            // 3. Render Chart
-            const sosDepletionDay = renderChart(dailyUsageData, dailyAvgLitres);
+function createRow(month='Month', pob=0, days=30, rate=3, bufferDays=null) {
+  const tbody = document.getElementById('sheet-body');
+  const tr = document.createElement('tr');
 
-            // 4. Update Metric Cards
-            
-            // SOS Metric (Red Card)
-            document.getElementById('sos-header').textContent = T.sos_header;
-            elements['sos-gallons'].textContent = formatNumber(sosGallons);
-            document.getElementById('sos-containers-count').textContent = gallonsToContainers(sosGallons).toLocaleString();
-            
-            // Buffer Metric (Teal Card - Optimization Target)
-            document.getElementById('buffer-header').textContent = T.buffer_header.replace('{DAYS}', bufferDays.toLocaleString());
-            elements['buffer-days-display'].textContent = bufferDays.toLocaleString(); // Update embedded number
-            elements['buffer-gallons'].textContent = formatNumber(bufferGallons);
-            document.getElementById('buffer-containers-count').textContent = gallonsToContainers(bufferGallons).toLocaleString();
-            
-            // Days Left Metric (Indigo Card)
-            document.getElementById('days-left-header').textContent = T.days_left_header;
-            document.getElementById('days-left').textContent = daysLeftFormatted;
-            
-            // Stock Status Metric (Status Card)
-            const statusCard = document.getElementById('stock-status-card');
-            const statusMessage = document.getElementById('status-message');
-            
-            statusCard.className = 'p-4 rounded-xl text-center shadow-lg'; // Reset classes
-            document.getElementById('status-label').textContent = T.status_label;
-            
-            if (daysLeft >= bufferDays) {
-                statusCard.classList.add('bg-green-100', 'border-2', 'border-green-400');
-                statusMessage.textContent = T.status_optimal;
-                statusMessage.classList.remove('text-red-900', 'text-amber-900');
-                statusMessage.classList.add('text-green-900');
-            } else if (daysLeft >= SOS_DAYS) {
-                statusCard.classList.add('bg-amber-100', 'border-2', 'border-amber-400');
-                statusMessage.textContent = T.status_warning;
-                statusMessage.classList.remove('text-red-900', 'text-green-900');
-                statusMessage.classList.add('text-amber-900');
-            } else {
-                statusCard.classList.add('bg-red-100', 'border-2', 'border-red-400');
-                statusMessage.textContent = T.status_critical;
-                statusMessage.classList.remove('text-green-900', 'text-amber-900');
-                statusMessage.classList.add('text-red-900');
-            }
-            
-            // Optional: If stock depletes within the 30-day chart projection, add a critical note
-            const existingDepletionNote = document.getElementById('depletion-note');
-            
-            if (sosDepletionDay !== -1 && daysLeft < SOS_DAYS) {
-                const depletionNoteText = `${T.status_critical}! Stock drops below SOS in the next ${sosDepletionDay} days.`;
-                if (!existingDepletionNote) {
-                     statusMessage.insertAdjacentHTML('afterend', `<p id="depletion-note" class="text-xs mt-2 text-red-600 font-medium">${depletionNoteText}</p>`);
-                } else {
-                    existingDepletionNote.textContent = depletionNoteText;
-                }
-            } else if (existingDepletionNote) {
-                existingDepletionNote.remove();
-            }
-        }
+  // If no bufferDays provided, get default
+  if (bufferDays===null) bufferDays = Number(DEFAULT_BUFFER_EL.value);
 
-        // Initialize the app on load
-        window.onload = function() {
-            // Set initial language to English (default)
-            setLanguage('en');
-            elements['residents'].focus();
-        };
+  tr.innerHTML = `
+    <td><input class="month" value="${month}" /></td>
+    <td><input class="pob" type="number" min="0" value="${pob}" /></td>
+    <td><input class="days" type="number" min="0" value="${days}" /></td>
+    <td><input class="rate" type="number" min="0" step="0.1" value="${rate}" /></td>
+    <td class="litres small text-right">0</td>
+    <td class="gallons small text-right">0</td>
+    <td><input class="buffer-days" type="number" min="0" value="${bufferDays}" /></td>
+    <td class="buffer-gallons small text-right">0</td>
+    <td class="containers small text-right">0</td>
+    <td class="text-center">
+      <button class="remove small px-2 py-1 bg-red-50 text-red-700 rounded">Del</button>
+    </td>
+  `;
+  tbody.appendChild(tr);
 
-    </script>
+  // attach listeners
+  tr.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', calculateAll);
+  });
+  tr.querySelector('.remove').addEventListener('click', ()=>{ tr.remove(); calculateAll(); });
+
+  calculateAll();
+}
+
+function clearTable(){
+  document.getElementById('sheet-body').innerHTML = '';
+  calculateAll();
+}
+
+function loadSample(){
+  clearTable();
+  for (const row of sampleMonths) createRow(row[0], row[1], row[2], row[3]);
+  calculateAll();
+}
+
+document.getElementById('add-row').addEventListener('click', ()=>createRow());
+document.getElementById('clear-table').addEventListener('click', clearTable);
+document.getElementById('reset-sample').addEventListener('click', loadSample);
+document.getElementById('container-cap').addEventListener('input', calculateAll);
+document.getElementById('litres-per-gallon').addEventListener('input', calculateAll);
+document.getElementById('default-buffer-days').addEventListener('input', ()=>{
+  BUFFER_VISIBLE.textContent = DEFAULT_BUFFER_EL.value;
+});
+document.getElementById('apply-buffer-all').addEventListener('click', ()=>{
+  const v = Number(DEFAULT_BUFFER_EL.value);
+  document.querySelectorAll('.buffer-days').forEach(inp=>inp.value = v);
+  calculateAll();
+});
+
+/* Main calc */
+function calculateAll(){
+  const rows = Array.from(document.querySelectorAll('#sheet-body tr'));
+  const litresPerGallon = Number(LITRES_PER_GALLON_EL.value) || 19;
+  const containerCapacity = Number(CONTAINER_EL.value) || 600;
+
+  let sumPob = 0, sumDays = 0, sumLitres = 0, sumGallons = 0, sumBufferLitres = 0, sumBufferGallons = 0, sumContainers = 0;
+  const labels = [], containersData = [], bufferData = [];
+
+  rows.forEach(tr=>{
+    const month = tr.querySelector('.month').value || '-';
+    const pob = Number(tr.querySelector('.pob').value) || 0;
+    const days = Number(tr.querySelector('.days').value) || 0;
+    const rate = Number(tr.querySelector('.rate').value) || 0;
+    const bufferDays = Number(tr.querySelector('.buffer-days').value) || Number(DEFAULT_BUFFER_EL.value);
+
+    const totalLitres = pob * days * rate;
+    const totalGallons = totalLitres / litresPerGallon;
+    const bufferLitres = (pob * rate) * bufferDays; // bufferDays * dailyAvgLitres (per month population)
+    const bufferGallons = bufferLitres / litresPerGallon;
+    const containersNeeded = Math.ceil(bufferGallons / containerCapacity);
+
+    tr.querySelector('.litres').textContent = fmt(totalLitres);
+    tr.querySelector('.gallons').textContent = fmt(totalGallons);
+    tr.querySelector('.buffer-gallons').textContent = fmt(bufferGallons);
+    tr.querySelector('.containers').textContent = fmt(containersNeeded);
+
+    sumPob += pob;
+    sumDays += days;
+    sumLitres += totalLitres;
+    sumGallons += totalGallons;
+    sumBufferLitres += bufferLitres;
+    sumBufferGallons += bufferGallons;
+    sumContainers += containersNeeded;
+
+    labels.push(month);
+    containersData.push(containersNeeded);
+    bufferData.push(Math.round(bufferGallons));
+  });
+
+  // update totals row
+  document.getElementById('sum-pob').textContent = fmt(sumPob);
+  document.getElementById('sum-days').textContent = fmt(sumDays);
+  document.getElementById('sum-litres').textContent = fmt(sumLitres);
+  document.getElementById('sum-gallons').textContent = fmt(sumGallons);
+  document.getElementById('sum-buffer-litres').textContent = fmt(sumBufferLitres);
+  document.getElementById('sum-buffer-gallons').textContent = fmt(sumBufferGallons);
+  document.getElementById('sum-containers').textContent = fmt(sumContainers);
+
+  // Charts
+  renderCharts(labels, containersData, bufferData);
+
+  // Deep analysis
+  generateAnalysis(rows, { sumPob, sumLitres, sumBufferGallons, sumContainers });
+}
+
+/* Charts rendering */
+function renderCharts(labels, containersData, bufferData){
+  const ctx1 = document.getElementById('containersChart').getContext('2d');
+  const ctx2 = document.getElementById('bufferChart').getContext('2d');
+
+  if (chartContainers) chartContainers.destroy();
+  if (chartBuffer) chartBuffer.destroy();
+
+  chartContainers = new Chart(ctx1, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Containers needed (per month)', data: containersData, backgroundColor: 'rgba(34,197,94,0.8)' }] },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+  });
+
+  chartBuffer = new Chart(ctx2, {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'Buffer (Gallons)', data: bufferData, fill:true, tension:0.2 }] },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+  });
+}
+
+/* Deep analysis & recommendations */
+function generateAnalysis(rows, sums){
+  const analysis = document.getElementById('analysis');
+  const totalContainers = sums.sumContainers;
+  const totalBufferGallons = Math.round(sums.sumBufferGallons);
+  // find peak month and max containers month
+  let peakPob = -1, peakMonth = '-';
+  let maxContainers = -1, maxContMonth = '-';
+
+  rows.forEach(tr=>{
+    const month = tr.querySelector('.month').value || '-';
+    const pob = Number(tr.querySelector('.pob').value) || 0;
+    const cont = Number(tr.querySelector('.containers').textContent.replace(/,/g,'')) || 0;
+    if (pob > peakPob){ peakPob = pob; peakMonth = month; }
+    if (cont > maxContainers){ maxContainers = cont; maxContMonth = month; }
+  });
+
+  // Create textual analysis
+  let html = '';
+  html += `<p><strong>Total forecast POB:</strong> ${fmt(sums.sumPob)} persons across all months.</p>`;
+  html += `<p><strong>Total drinking water demand (L):</strong> ${fmt(Math.round(sums.sumLitres))} L — which is approx <strong>${fmt(Math.round(sums.sumGallons))}</strong> gallons.</p>`;
+  html += `<p><strong>Total buffer requirement:</strong> ~${fmt(totalBufferGallons)} gallons across months (based on per-row buffer days), needing roughly <strong>${fmt(totalContainers)}</strong> containers of ${CONTAINER_EL.value} gallons each.</p>`;
+
+  // Risk & timing insights
+  html += `<p><strong>Peak POB month:</strong> ${peakMonth} (${fmt(peakPob)} persons).</p>`;
+  html += `<p><strong>Maximum containers required in a single month:</strong> ${maxContMonth} (${fmt(maxContainers)} containers).</p>`;
+
+  // Actionable recommendations
+  html += `<h4 class="mt-2">Recommendations</h4>`;
+  html += `<ul class="list-disc pl-5 small muted">
+    <li>Keep SOS/minimum stock for emergency (15 days) separate from buffer — ensure at least 15 days of supply held onsite.</li>
+    <li>Plan shipping cadence around months where <strong>containers needed ≥ 20</strong> — consider bi-weekly shipments or temporary extra storage.</li>
+    <li>Review months where daily rate or POB spikes: validate POB accuracy (mobilization/demobilization) to avoid overstocking.</li>
+    <li>Optimize buffer days: for months with low POB, reduce buffer days to save logistics cost; for peak seasons increase buffer to avoid stockouts.</li>
+  </ul>`;
+
+  // Short table of high-risk months
+  const highRisk = rows.filter(tr => {
+    const cont = Number(tr.querySelector('.containers').textContent.replace(/,/g,'')) || 0;
+    return cont >= Math.max(10, Math.ceil(totalContainers / Math.max(1, rows.length))); // heuristic
+  }).map(tr=>`${tr.querySelector('.month').value} (${tr.querySelector('.containers').textContent} containers)`);
+
+  if (highRisk.length) {
+    html += `<p><strong>High logistics pressure months:</strong> ${highRisk.join(', ')}</p>`;
+  }
+
+  analysis.innerHTML = html;
+
+  // KPI box updates
+  document.getElementById('peak-month').textContent = peakMonth;
+  document.getElementById('max-cont-month').textContent = maxContMonth;
+  document.getElementById('total-cont-all').textContent = fmt(totalContainers);
+  document.getElementById('total-buffer-gallons').textContent = fmt(totalBufferGallons);
+}
+
+/* CSV download */
+document.getElementById('download-csv').addEventListener('click', ()=>{
+  const rows = Array.from(document.querySelectorAll('#sheet-body tr'));
+  const lines = [];
+  const header = ['Month','Forecast POB','Days in Month','Rate (L/person/day)','Total Drinking Water (L)','Total Drinking Water (Galls)','Buffer Days','Buffer (Galls)','Containers'];
+  lines.push(header.join(','));
+  rows.forEach(tr=>{
+    const month = tr.querySelector('.month').value.replace(/,/g,'');
+    const pob = tr.querySelector('.pob').value;
+    const days = tr.querySelector('.days').value;
+    const rate = tr.querySelector('.rate').value;
+    const litres = tr.querySelector('.litres').textContent.replace(/,/g,'');
+    const galls = tr.querySelector('.gallons').textContent.replace(/,/g,'');
+    const bufferDays = tr.querySelector('.buffer-days').value;
+    const bufferGallons = tr.querySelector('.buffer-gallons').textContent.replace(/,/g,'');
+    const containers = tr.querySelector('.containers').textContent.replace(/,/g,'');
+
+    lines.push([month,pob,days,rate,litres,galls,bufferDays,bufferGallons,containers].join(','));
+  });
+
+  const csv = lines.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'water_provision_sheet.csv'; a.click(); URL.revokeObjectURL(url);
+});
+
+/* Initialize */
+loadSample();
+</script>
+
 </body>
 </html>
